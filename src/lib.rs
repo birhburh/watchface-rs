@@ -4,20 +4,20 @@ use std::{
 };
 
 use winnow::{
-    binary::{le_f32, le_u32, u8},
+    binary::{be_u16, le_f32, le_u16, le_u32, u8},
     stream::{Located, Location, Stream as _},
     token, PResult, Parser,
 };
 
 pub type Stream<'i> = Located<&'i [u8]>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 struct Image {
-    pixels: Vec<u8>,
-    width: u32,
-    height: u32,
-    bits_per_pixel: u32,
-    pixel_format: u32,
+    pixels: Vec<u16>,
+    width: u16,
+    height: u16,
+    bits_per_pixel: u16,
+    pixel_format: u16,
 }
 
 #[derive(Debug, PartialEq, Default)]
@@ -70,7 +70,7 @@ enum WatchfaceBinFileParams {
 #[derive(Debug, PartialEq)]
 struct WatchfaceBinFile {
     parameters: WatchfaceBinFileParams,
-    // images: Vec<Image>,
+    images: Vec<Image>,
 }
 
 fn variable_width_value_parser<'s>(i: &mut Stream<'s>) -> PResult<(u64, usize)> {
@@ -121,6 +121,146 @@ fn param_parser<'s>(i: &mut Stream<'s>) -> PResult<(u8, Param)> {
     Ok((key, value))
 }
 
+fn image_parse<'s>(i: &mut Stream<'s>) -> PResult<Image> {
+    let signature = le_u16.parse_next(i)?;
+    if signature != 0x4D42 {
+        panic!("Invalid image signature: {}", signature);
+    }
+
+    // read header
+    let pixel_format = le_u16.parse_next(i)?;
+
+    if pixel_format == 0x65 {
+        todo!();
+        // return parseCompressedImage(dataBuffer)
+    } else if pixel_format == 0xFFFF {
+        todo!();
+        // return parse32BitImage(dataBuffer)
+    }
+
+    let width = le_u16.parse_next(i)?;
+    let height = le_u16.parse_next(i)?;
+    let row_size = le_u16.parse_next(i)?;
+    let bits_per_pixel = le_u16.parse_next(i)?;
+    let palette_colors_count = le_u16.parse_next(i)?;
+    let transparent_palette_color = le_u16.parse_next(i)?;
+
+    if !([16, 24, 32].contains(&bits_per_pixel)
+        && palette_colors_count == 0
+        && [0x08, 0x13, 0x1B, 0x1C, 0x10, 0x09].contains(&pixel_format))
+        && !([1, 2, 4, 8].contains(&bits_per_pixel)
+            && palette_colors_count > 0
+            && pixel_format == 0x64)
+    {
+        panic!("Unsuported pixel format/color depth/Palette (should add support) {pixel_format} {bits_per_pixel} {palette_colors_count}")
+    }
+
+    if ((bits_per_pixel * width) as f32 / 8.).ceil() as u16 != row_size {
+        panic!("Row size is not as expected (Padding ?)")
+    }
+
+    let palette_size = 0;
+    // let palette = [];
+
+    if palette_colors_count > 0 {
+        // Read palette
+        todo!();
+        // for (let i = 0; i < palette_colors_count; i++) {
+        // 	const color = {
+        // 		red: dataView.getUint8(HEADER_SIZE + i * 4),
+        // 		green: dataView.getUint8(HEADER_SIZE + i * 4 + 1),
+        // 		blue: dataView.getUint8(HEADER_SIZE + i * 4 + 2),
+        // 		alpha: i === transparentPaletteColor - 1 ? 0xFF : 0x00
+        // 	}
+        // 	palette.push(color)
+        // }
+
+        // 	palette_size = paletteColorsCount * 4
+    }
+
+    // Read pixel data
+    let mut pixels = vec![0; (4 * width * height).into()];
+    for y in 0..height {
+        for x in 0..width {
+            // read pixel color info
+            let red;
+            let green;
+            let blue;
+            let mut alpha = 0x00;
+            if palette_colors_count != 0 {
+                todo!();
+            // let colorId
+            // if (bits_per_pixel < 8) {
+            // 	const pixelsPerByte = 8 / bits_per_pixel
+            // 	const byte = dataView.getUint8(HEADER_SIZE + paletteSize + (y * row_size) + Math.floor(x / pixelsPerByte))
+            // 	const bitMask = (1 << bits_per_pixel) - 1
+            // 	const bitPosition = 8 - ((x % pixelsPerByte) + 1) * bits_per_pixel
+            // 	colorId = (byte >> bitPosition) & bitMask;
+            // } else {
+            // 	colorId = dataView.getUint8(HEADER_SIZE + paletteSize + (y * row_size) + x)
+            // }
+            // const color = palette[colorId]
+            // red = color.red
+            // green = color.green
+            // blue = color.blue
+            // alpha = color.alpha
+            } else {
+                let byte_per_pixel = bits_per_pixel / 8;
+
+                if byte_per_pixel == 4 {
+                    red = u8.parse_next(i)? as u16;
+                    green = u8.parse_next(i)? as u16;
+                    blue = u8.parse_next(i)? as u16;
+                    alpha = u8.parse_next(i)? as u16;
+                } else {
+                    let rgba;
+                    if byte_per_pixel == 3 {
+                        // 24 bits is 16 bit color data (big endian) with 8 bit alpha
+                        alpha = u8.parse_next(i)? as u16;
+                        rgba = be_u16.parse_next(i)?;
+                    } else {
+                        // for the 16 bit images, the value is little endian
+                        rgba = le_u16.parse_next(i)?;
+                    }
+                    if pixel_format == 0x13 {
+                        // color is 16 bit (4:4:4:4) abgr
+                        alpha = (rgba & 0xF000) >> 8;
+                        blue = (rgba & 0x0F00) >> 4;
+                        green = rgba & 0x00F0;
+                        red = (rgba & 0x000F) << 4;
+                    } else if pixel_format == 0x1C || pixel_format == 0x09 {
+                        // color is 16bit (5:6:5) rgb
+                        red = (rgba & 0xF800) >> 8;
+                        green = (rgba & 0x07E0) >> 3;
+                        blue = (rgba & 0x001F) << 3;
+                    } else {
+                        // color is 16bit (5:6:5) bgr
+                        blue = (rgba & 0xF800) >> 8;
+                        green = (rgba & 0x07E0) >> 3;
+                        red = (rgba & 0x001F) << 3;
+                    }
+                }
+            }
+
+            let pixel_position = ((y * width + x) * 4) as usize;
+            pixels[pixel_position] = red;
+            pixels[pixel_position + 1] = green;
+            pixels[pixel_position + 2] = blue;
+            // Alpha is inverted, 0xFF is transparent
+            pixels[pixel_position + 3] = 0xFF - alpha;
+        }
+    }
+
+    Ok(Image {
+        width,
+        height,
+        bits_per_pixel,
+        pixel_format,
+        pixels,
+        ..Default::default()
+    })
+}
+
 fn params_parser<'s>(i: &mut Stream<'s>, max_size: usize) -> PResult<Params> {
     let mut prev = i.location();
     let mut bytes_left = max_size;
@@ -146,11 +286,11 @@ fn params_parser<'s>(i: &mut Stream<'s>, max_size: usize) -> PResult<Params> {
     Ok(params)
 }
 
-fn bytes_to_usize(bytes: &Vec<u8>) -> usize {
+fn bytes_to_usize(bytes: &[u8]) -> usize {
     let zeros = (0..(size_of::<usize>() - bytes.len()))
         .map(|_| 0u8)
         .collect::<Vec<_>>();
-    let bytes = [bytes.clone(), zeros].concat();
+    let bytes = [bytes, &zeros[..]].concat();
     let bytes = bytes[0..size_of::<usize>()].try_into().unwrap();
     usize::from_le_bytes(bytes)
 }
@@ -168,7 +308,6 @@ fn bin_parser<'s>(mut i: Located<&[u8]>) -> PResult<WatchfaceBinFile> {
     let _header = token::take(75usize).parse_next(&mut i)?;
     let _buffer_size = le_u32.parse_next(&mut i)?;
     let info_size = le_u32.parse_next(&mut i)?;
-    dbg!(info_size);
     let parameter_info = params_parser(&mut i, info_size as usize)?;
 
     // First parameter info contains parameters size and images count
@@ -267,7 +406,6 @@ fn bin_parser<'s>(mut i: Located<&[u8]>) -> PResult<WatchfaceBinFile> {
                 };
 
                 for (key, value) in parameter.into_iter() {
-                    dbg!((key, &value));
                     match key {
                         2 => {
                             let subvalue = match &value.get(0).unwrap() {
@@ -278,7 +416,6 @@ fn bin_parser<'s>(mut i: Located<&[u8]>) -> PResult<WatchfaceBinFile> {
                             for (key, value) in subvalue.into_iter() {
                                 match key {
                                     1 => {
-                                        dbg!(value);
                                         let subvalue = match &value.get(0).unwrap() {
                                             Child(child) => child,
                                             _ => panic!("First param should be child param"),
@@ -292,7 +429,6 @@ fn bin_parser<'s>(mut i: Located<&[u8]>) -> PResult<WatchfaceBinFile> {
                                                     };
 
                                                     for (key, value) in subvalue.into_iter() {
-                                                        dbg!((key, &value));
                                                         match key {
                                                             1 => {
                                                                 image_range.x = bytes_param_to_usize(
@@ -343,15 +479,33 @@ fn bin_parser<'s>(mut i: Located<&[u8]>) -> PResult<WatchfaceBinFile> {
             _ => (),
         }
     }
+
+    i.reset(&params_start);
+    i.next_slice(parameters_size);
+
+    let images_info_size = 4 * images_count;
+    let images_info = token::take(images_info_size).parse_next(&mut i)?;
+
+    let images_start = i.checkpoint();
+
+    // Load each image
+    let mut images = vec![];
+    for offset_index in 0..images_count {
+        let image_offset = bytes_to_usize(&images_info[offset_index * 4..offset_index * 4 + 4]);
+        i.reset(&images_start);
+        i.next_slice(image_offset);
+        let image = image_parse(&mut i)?;
+        images.push(image);
+    }
+
     Ok(WatchfaceBinFile {
         parameters: WatchfaceBinFileParams::MiBand(miband_params),
+        images,
     })
 }
 
 fn parse_watch_face_bin(bytes: &mut &[u8]) -> PResult<WatchfaceBinFile> {
     let res = bin_parser(Located::new(bytes));
-    dbg!(&res);
-    dbg!(bin_parser(Located::new(&b"\x01"[..])));
     res
 }
 
@@ -388,7 +542,6 @@ mod tests {
         ];
 
         let result = parse_watch_face_bin(&mut &bytes[..]).unwrap();
-        dbg!(&result);
         assert_eq!(
             result,
             WatchfaceBinFile {
@@ -411,22 +564,22 @@ mod tests {
                     }),
                     ..Default::default()
                 }),
-                // images: vec![Image {
-                //     pixels: vec![
-                //         0x11, // 1st pixel
-                //         0x21,
-                //         0x31,
-                //         0xFF - 0x41, // 1st pixel end
-                //         0x12,        // 2nd pixel
-                //         0x22,
-                //         0x32,
-                //         0xFF - 0x42, // 2nd pixel end
-                //     ],
-                //     width: 2,
-                //     height: 1,
-                //     bits_per_pixel: 32,
-                //     pixel_format: 0x10,
-                // }]
+                images: vec![Image {
+                    pixels: vec![
+                        0x11, // 1st pixel
+                        0x21,
+                        0x31,
+                        0xFF - 0x41, // 1st pixel end
+                        0x12,        // 2nd pixel
+                        0x22,
+                        0x32,
+                        0xFF - 0x42, // 2nd pixel end
+                    ],
+                    width: 2,
+                    height: 1,
+                    bits_per_pixel: 32,
+                    pixel_format: 0x10,
+                }]
             }
         );
     }
