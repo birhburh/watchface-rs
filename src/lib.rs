@@ -1,12 +1,17 @@
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    mem::size_of,
-};
+#![allow(dead_code, unused_imports, unused_variables)] // TODO: Remove when moving from tests to real code
 
-use winnow::{
-    binary::{be_u16, le_f32, le_u16, le_u32, u8},
-    stream::{Located, Location, Stream as _},
-    token, PResult, Parser,
+use {
+    std::{
+        collections::{hash_map::Entry, HashMap},
+        default,
+        fmt::{Debug, Display},
+        mem::size_of,
+    },
+    winnow::{
+        binary::{be_u16, le_f32, le_u16, le_u32, u8},
+        stream::{Located, Location, Stream as _},
+        token, PResult, Parser,
+    },
 };
 
 pub type Stream<'i> = Located<&'i [u8]>;
@@ -26,7 +31,6 @@ struct ImageReference {
     y: u32,
     image_index: u32,
 }
-
 #[derive(Debug, PartialEq, Default)]
 struct ImageRange {
     x: u32,
@@ -41,19 +45,19 @@ struct Background {
 }
 
 #[derive(Debug, PartialEq, Default)]
+struct TimeNumbers {
+    tens: Option<ImageRange>,
+    ones: Option<ImageRange>,
+}
+
+#[derive(Debug, PartialEq, Default)]
 struct Time {
-    hours: Option<ImageRange>,
-    minutes: Option<ImageRange>,
-    seconds: Option<ImageRange>,
+    hours: Option<TimeNumbers>,
+    minutes: Option<TimeNumbers>,
+    seconds: Option<TimeNumbers>,
 }
 
 type Params = HashMap<u8, Vec<Param>>;
-
-#[derive(Debug, PartialEq, Default)]
-struct MiBandParams {
-    background: Option<Background>,
-    time: Option<Time>,
-}
 
 #[derive(Debug, PartialEq)]
 enum Param {
@@ -62,31 +66,193 @@ enum Param {
     Child(Params),
 }
 
-#[derive(Debug, PartialEq)]
-enum WatchfaceBinFileParams {
-    MiBand(MiBandParams),
+trait WatchfaceParams {
+    fn new() -> Self;
+    fn append(&mut self, key: u8, parameters: Params);
+}
+
+#[derive(Debug, PartialEq, Default)]
+struct MiBandParams {
+    background: Option<Background>,
+    time: Option<Time>,
+}
+
+fn parse_image_ref(param: &Param) -> ImageReference {
+    let mut image_ref = ImageReference {
+        ..Default::default()
+    };
+
+    let subvalue = match param {
+        Param::Child(child) => child,
+        _ => panic!("First param should be child param"),
+    };
+
+    for (key, value) in subvalue.into_iter() {
+        match key {
+            1 => {
+                image_ref.x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            2 => {
+                image_ref.y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            3 => {
+                image_ref.image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            _ => (),
+        }
+    }
+    image_ref
+}
+
+fn parse_image_range(param: &Param) -> ImageRange {
+    let mut image_range = ImageRange {
+        ..Default::default()
+    };
+
+    let subvalue = match param {
+        Param::Child(child) => child,
+        _ => panic!("First param should be child param"),
+    };
+
+    for (key, value) in subvalue.into_iter() {
+        match key {
+            1 => {
+                image_range.x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            2 => {
+                image_range.y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            3 => {
+                image_range.image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            4 => {
+                image_range.image_count = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            _ => (),
+        }
+    }
+    image_range
+}
+
+impl MiBandParams {
+    fn parse_background(params: Params) -> Background {
+        let mut background = Background {
+            ..Default::default()
+        };
+
+        for (key, value) in params.into_iter() {
+            match key {
+                1 => {
+                    background.image = parse_image_ref(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        background
+    }
+
+    fn parse_time(params: Params) -> Time {
+        let mut time = Time {
+            ..Default::default()
+        };
+
+        for (key, value) in params.into_iter() {
+            match key {
+                2 => {
+                    time.minutes = Self::parse_time_numbers(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        time
+    }
+
+    fn parse_time_numbers(param: &Param) -> Option<TimeNumbers> {
+        let mut numbers = TimeNumbers {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    numbers.tens = Some(parse_image_range(value.get(0).unwrap()));
+                }
+                2 => {
+                    numbers.ones = Some(parse_image_range(value.get(0).unwrap()));
+                }
+                _ => (),
+            }
+        }
+        Some(numbers)
+    }
+}
+
+impl WatchfaceParams for MiBandParams {
+    fn new() -> Self {
+        MiBandParams {
+            ..Default::default()
+        }
+    }
+
+    fn append(&mut self, key: u8, params: Params) {
+        match key {
+            2 => {
+                self.background = Some(Self::parse_background(params));
+            }
+            3 => {
+                self.time = Some(Self::parse_time(params));
+            }
+            _ => (),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
-struct WatchfaceBinFile {
-    parameters: WatchfaceBinFileParams,
+struct Watchface<T: WatchfaceParams> {
+    parameters: T,
     images: Vec<Image>,
 }
 
-fn variable_width_value_parser<'s>(i: &mut Stream<'s>) -> PResult<(u64, usize)> {
-    let mut value = 0u64;
+fn variable_width_value_parser(i: &mut Stream) -> PResult<(i64, usize)> {
+    let mut value = 0i64;
     let bytes = token::take_till(0..10, |b| b & 0x80 != 0x80).parse_next(i)?;
     let last = u8.parse_next(i)?;
     let mut i = 0;
     for b in [bytes, &[last]].concat() {
-        value |= (b as u64 & 0x7f) << (i * 7);
+        value |= (b as i64 & 0x7f) << (i * 7);
         i += 1;
     }
 
     Ok((value, i))
 }
 
-fn param_parser<'s>(i: &mut Stream<'s>) -> PResult<(u8, Param)> {
+fn write_variable_width_value(value: i64) -> Vec<u8> {
+	let mut result = vec![];
+	let mut value_big_int = value as u64;
+
+	for i in 0..10 {
+		// Read lower 7 bits of value
+		let byte = (value_big_int & 0x7F) as u8;
+
+		value_big_int = value_big_int >> 7;
+
+		// If no data left after this byte, we can stop
+		if value_big_int == 0 {
+			result.push(byte);
+			break
+		}
+		// Add byte with flag meaning the data continues in the next byte
+		result.push(byte | 0x80)
+	}
+
+	result
+}
+
+fn param_parser(i: &mut Stream) -> PResult<(u8, Param)> {
     // Read parameters info
     let (field_descriptor, _) = variable_width_value_parser(i)?;
 
@@ -101,8 +267,7 @@ fn param_parser<'s>(i: &mut Stream<'s>) -> PResult<(u8, Param)> {
     } else {
         // variable width value
         let (temp_field_value, value_size) = variable_width_value_parser(i)?;
-        let mut field_value = temp_field_value.to_le_bytes()[0..value_size].to_vec();
-        field_value.reverse();
+        let field_value = temp_field_value.to_le_bytes()[0..value_size].to_vec();
 
         if has_child {
             // When node has Child, field value is size of Child
@@ -121,7 +286,7 @@ fn param_parser<'s>(i: &mut Stream<'s>) -> PResult<(u8, Param)> {
     Ok((key, value))
 }
 
-fn image_parse<'s>(i: &mut Stream<'s>) -> PResult<Image> {
+fn image_parse(i: &mut Stream) -> PResult<Image> {
     let signature = le_u16.parse_next(i)?;
     if signature != 0x4D42 {
         panic!("Invalid image signature: {}", signature);
@@ -261,7 +426,7 @@ fn image_parse<'s>(i: &mut Stream<'s>) -> PResult<Image> {
     })
 }
 
-fn params_parser<'s>(i: &mut Stream<'s>, max_size: usize) -> PResult<Params> {
+fn params_parser(i: &mut Stream, max_size: usize) -> PResult<Params> {
     let mut prev = i.location();
     let mut bytes_left = max_size;
     let mut params = Params::from(HashMap::new());
@@ -303,7 +468,7 @@ fn bytes_param_to_usize(param: &Param) -> usize {
     }
 }
 
-fn bin_parser<'s>(mut i: Located<&[u8]>) -> PResult<WatchfaceBinFile> {
+fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchface<T>> {
     let _signature = token::take(4usize).parse_next(&mut i)?;
     let _header = token::take(75usize).parse_next(&mut i)?;
     let _buffer_size = le_u32.parse_next(&mut i)?;
@@ -332,9 +497,7 @@ fn bin_parser<'s>(mut i: Located<&[u8]>) -> PResult<WatchfaceBinFile> {
         _ => panic!("First param is other params size, it should be int"),
     };
 
-    let mut miband_params = MiBandParams {
-        ..Default::default()
-    };
+    let mut parameters = T::new();
 
     let params_start = i.checkpoint();
 
@@ -345,7 +508,7 @@ fn bin_parser<'s>(mut i: Located<&[u8]>) -> PResult<WatchfaceBinFile> {
 
         i.reset(&params_start);
 
-        let subvalue = match &value.get(0).unwrap() {
+        let subvalue = match value.get(0).unwrap() {
             Child(child) => child,
             _ => panic!("First param should be child param"),
         };
@@ -354,130 +517,9 @@ fn bin_parser<'s>(mut i: Located<&[u8]>) -> PResult<WatchfaceBinFile> {
         let size = bytes_param_to_usize(&subvalue.get(&2).unwrap()[0]);
 
         i.next_slice(offset);
-        let parameter = params_parser(&mut i, size)?;
+        let params = params_parser(&mut i, size)?;
 
-        match key {
-            2 => {
-                let mut background = Background {
-                    ..Default::default()
-                };
-
-                for (key, value) in parameter.into_iter() {
-                    match key {
-                        1 => {
-                            let mut image_ref = ImageReference {
-                                ..Default::default()
-                            };
-
-                            let subvalue = match &value.get(0).unwrap() {
-                                Child(child) => child,
-                                _ => panic!("First param should be child param"),
-                            };
-
-                            for (key, value) in subvalue.into_iter() {
-                                match key {
-                                    1 => {
-                                        image_ref.x =
-                                            bytes_param_to_usize(&value.get(0).unwrap()) as u32;
-                                    }
-                                    2 => {
-                                        image_ref.y =
-                                            bytes_param_to_usize(&value.get(0).unwrap()) as u32;
-                                    }
-                                    3 => {
-                                        image_ref.image_index =
-                                            bytes_param_to_usize(&value.get(0).unwrap()) as u32;
-                                    }
-                                    _ => (),
-                                }
-                            }
-
-                            background.image = image_ref;
-                        }
-                        _ => (),
-                    }
-                }
-
-                miband_params.background = Some(background);
-            }
-            3 => {
-                let mut time = Time {
-                    ..Default::default()
-                };
-
-                for (key, value) in parameter.into_iter() {
-                    match key {
-                        2 => {
-                            let subvalue = match &value.get(0).unwrap() {
-                                Child(child) => child,
-                                _ => panic!("First param should be child param"),
-                            };
-
-                            for (key, value) in subvalue.into_iter() {
-                                match key {
-                                    1 => {
-                                        let subvalue = match &value.get(0).unwrap() {
-                                            Child(child) => child,
-                                            _ => panic!("First param should be child param"),
-                                        };
-
-                                        for (key, value) in subvalue.into_iter() {
-                                            match key {
-                                                2 => {
-                                                    let mut image_range = ImageRange {
-                                                        ..Default::default()
-                                                    };
-
-                                                    for (key, value) in subvalue.into_iter() {
-                                                        match key {
-                                                            1 => {
-                                                                image_range.x = bytes_param_to_usize(
-                                                                    &value.get(0).unwrap(),
-                                                                )
-                                                                    as u32;
-                                                            }
-                                                            2 => {
-                                                                image_range.y = bytes_param_to_usize(
-                                                                    &value.get(0).unwrap(),
-                                                                )
-                                                                    as u32;
-                                                            }
-                                                            3 => {
-                                                                image_range.image_index =
-                                                                    bytes_param_to_usize(
-                                                                        &value.get(0).unwrap(),
-                                                                    )
-                                                                        as u32;
-                                                            }
-                                                            4 => {
-                                                                image_range.image_count =
-                                                                    bytes_param_to_usize(
-                                                                        &value.get(0).unwrap(),
-                                                                    )
-                                                                        as u32;
-                                                            }
-                                                            _ => (),
-                                                        }
-                                                    }
-
-                                                    time.minutes = Some(image_range);
-                                                }
-                                                _ => (),
-                                            }
-                                        }
-                                    }
-                                    _ => (),
-                                }
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-
-                miband_params.time = Some(time);
-            }
-            _ => (),
-        }
+        parameters.append(*key, params);
     }
 
     i.reset(&params_start);
@@ -498,14 +540,11 @@ fn bin_parser<'s>(mut i: Located<&[u8]>) -> PResult<WatchfaceBinFile> {
         images.push(image);
     }
 
-    Ok(WatchfaceBinFile {
-        parameters: WatchfaceBinFileParams::MiBand(miband_params),
-        images,
-    })
+    Ok(Watchface { parameters, images })
 }
 
-fn parse_watch_face_bin(bytes: &mut &[u8]) -> PResult<WatchfaceBinFile> {
-    let res = bin_parser(Located::new(bytes));
+fn parse_watch_face_bin<T: WatchfaceParams>(bytes: &mut &[u8]) -> PResult<Watchface<T>> {
+    let res = bin_parser::<T>(Located::new(bytes));
     res
 }
 
@@ -527,43 +566,55 @@ mod tests {
             0x0C, 0x00, 0x00, 0x00, // Size of biggest param
             0x12, 0x00, 0x00, 0x00, // Size of params info: 18
             // First param info
-            0x0a, 0x04, 0x08, 0x14, 0x10, 0x01, // size of params: 20, imagesCount: 1
-            0x12, 0x04, 0x08, 0x00, 0x10, 0x08, // Background param info, offset 0, size 8
-            0x1a, 0x04, 0x08, 0x08, 0x10, 0x0C, // Time param info, offset 8, size 12
-            // Background param: x: 1, y: 2, imgid: 0
-            0x0a, 0x06, 0x08, 0x01, 0x10, 0x02, 0x18, 0x00,
-            // Time param: { Minutes: { Tens: { x: 16, y: 32, imgid: 0, imgcnt: 2 } } }
-            0x12, 0x0A, 0x0A, 0x08, 0x08, 0x10, 0x10, 0x20, 0x18, 0x00, 0x20,
-            0x02, // Time param
+            0x0a, 0x04, 0x08, 0x20, 0x10, 0x01, // size of params: 32, imagesCount: 1
+            0x12, 0x04, 0x08, 0x00, 0x10, 0x09, // Background param info, offset 0, size 9
+            0x1a, 0x04, 0x08, 0x09, 0x10, 0x17, // Time param info, offset 9, size 23
+            // Background param: x: 1, y: 258, imgid: 0
+            0x0a, 0x07, 0x08, 0x01, 0x10, 0x82, 0x02, 0x18, 0x00, // Background param
+            0x12, 0x15, // Minutes: size: 21
+            0x0A, 0x08, // Tens: size: 8
+            // x: 16, y: 32, imgid: 0, imgcnt: 2
+            0x08, 0x10, 0x10, 0x20, 0x18, 0x00, 0x20, 0x02, // Tens
+            0x12, 0x09, // Ones: size: 9
+            // x: 731, y: 12, imgid: 1, imgcnt: 7
+            0x08, 0xDB, 0x05, 0x10, 0x0C, 0x18, 0x01, 0x20, 0x07, // Ones
             0x00, 0x00, 0x00, 0x00, // Offset of 1st image: 0
             // Image
             0x42, 0x4D, 0x10, 0x00, 0x02, 0x00, 0x01, 0x00, 0x08, 0x00, 0x20, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x11, 0x21, 0x31, 0x41, 0x12, 0x22, 0x32, 0x42,
         ];
 
-        let result = parse_watch_face_bin(&mut &bytes[..]).unwrap();
+        let result = parse_watch_face_bin::<MiBandParams>(&mut &bytes[..]).unwrap();
         assert_eq!(
             result,
-            WatchfaceBinFile {
-                parameters: WatchfaceBinFileParams::MiBand(MiBandParams {
+            Watchface {
+                parameters: MiBandParams {
                     background: Some(Background {
                         image: ImageReference {
                             x: 1,
-                            y: 2,
+                            y: 258,
                             image_index: 0,
                         }
                     }),
                     time: Some(Time {
-                        minutes: Some(ImageRange {
-                            x: 16,
-                            y: 32,
-                            image_index: 0,
-                            image_count: 2
+                        minutes: Some(TimeNumbers {
+                            tens: Some(ImageRange {
+                                x: 16,
+                                y: 32,
+                                image_index: 0,
+                                image_count: 2
+                            }),
+                            ones: Some(ImageRange {
+                                x: 731,
+                                y: 12,
+                                image_index: 1,
+                                image_count: 7
+                            })
                         }),
                         ..Default::default()
                     }),
                     ..Default::default()
-                }),
+                },
                 images: vec![Image {
                     pixels: vec![
                         0x11, // 1st pixel
@@ -613,7 +664,7 @@ mod tests {
                 Params::from(HashMap::from([(
                     1,
                     vec![Param::Child(Params::from(HashMap::from([
-                        (1, vec![Param::Bytes(vec![0x02, 0x3C])]),
+                        (1, vec![Param::Bytes(vec![0x3C, 0x02])]),
                         (2, vec![Param::Bytes(vec![0x6B])]),
                     ])))]
                 ),]))
@@ -673,4 +724,162 @@ mod tests {
             )
         }
     }
+
+    #[test]
+    fn read_single_byte_value() {
+        let bytes: Vec<u8> = vec![0x73];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!(
+                (value, value_size),
+                (0x73, 1),
+            )
+        }
+    }
+
+    #[test]
+    fn read_multi_byte_value() {
+        let bytes: Vec<u8> = vec![0xF3, 0x42];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!(
+                (value, value_size),
+                (0x2173, 2),
+            )
+        }
+    }
+
+    #[test]
+    fn read_negative_values() {
+        let bytes: Vec<u8> = vec![0xF3, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!(
+                (value, value_size),
+                (-13, 10),
+            )
+        }
+    }
+
+    #[test]
+    fn read_32bit_negative_values() {
+        let bytes: Vec<u8> = vec![0xF3, 0xFF, 0xFF, 0xFF, 0x0F];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!(
+                // TODO: implement 32 bit reading because it is needed for UIHH_BIPU_GTS2MINI format
+                // we can live without it for now
+                (value as i32, value_size),
+                (-13, 5),
+            )
+        }
+    }
+
+    #[test]
+    fn read_31_bit_value() {
+        let bytes: Vec<u8> = vec![0x80, 0x80, 0x80, 0x80, 0x04];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            dbg!((value as i32, value_size));
+            assert_eq!(
+                (value as i32, value_size),
+                (1073741824, 5),
+            )
+        }
+    }
+
+    #[test]
+    fn read_32_bit_value() {
+        let bytes: Vec<u8> = vec![0x80, 0x80, 0x80, 0x80, 0x08];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!(
+                (value, value_size),
+                (2147483648, 5),
+            )
+        }
+    }
+
+    #[test]
+    fn read_33_bit_value() {
+        let bytes: Vec<u8> = vec![0x80, 0x80, 0x80, 0x80, 0x10];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!(
+                (value, value_size),
+                (4294967296, 5),
+            )
+        }
+    }
+
+    #[test]
+    fn write_small_value_on_one_byte () {
+        assert_eq!(
+            write_variable_width_value(0x73),
+            vec![0x73],
+        )
+    }
+
+    #[test]
+    fn write_bigger_values_on_multiple_bytes () {
+        assert_eq!(
+            write_variable_width_value(0x2173),
+            vec![0xF3, 0x42],
+        )
+    }
+
+    #[test]
+    fn write_negative_values () {
+        assert_eq!(
+            write_variable_width_value(-13),
+            vec![0xF3, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
+        )
+    }
+
+    // #[test]
+    // fn write_32bit_negative_values () {
+    //     assert_eq!(
+    //         write_variable_width_value(-13, 32),
+    //         vec![0xF3, 0xFF, 0xFF, 0xFF, 0x0F],
+    //     )
+    // }
+
+    #[test]
+    fn write_31_bit_value () {
+        assert_eq!(
+            write_variable_width_value(1073741824),
+            vec![0x80, 0x80, 0x80, 0x80, 0x04],
+        )
+    }
+
+    #[test]
+    fn write_32_bit_value () {
+        assert_eq!(
+            write_variable_width_value(2147483648),
+            vec![0x80, 0x80, 0x80, 0x80, 0x08],
+        )
+    }
+
+    #[test]
+    fn write_33_bit_value () {
+        assert_eq!(
+            write_variable_width_value(4294967296),
+            vec![0x80, 0x80, 0x80, 0x80, 0x10],
+        )
+    }
+
 }
