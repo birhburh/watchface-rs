@@ -1,10 +1,9 @@
-#![allow(dead_code, unused_imports, unused_variables)] // TODO: Remove when moving from tests to real code
+use serde::{Deserialize, Serialize};
 
 use {
     std::{
         collections::{hash_map::Entry, HashMap},
-        default,
-        fmt::{Debug, Display},
+        fmt::Debug,
         mem::size_of,
     },
     winnow::{
@@ -17,63 +16,76 @@ use {
 pub type Stream<'i> = Located<&'i [u8]>;
 
 #[derive(Debug, PartialEq, Default)]
-struct Image {
-    pixels: Vec<u16>,
-    width: u16,
-    height: u16,
-    bits_per_pixel: u16,
-    pixel_format: u16,
+pub struct Image {
+    pub pixels: Vec<u8>,
+    pub width: u16,
+    pub height: u16,
+    pub bits_per_pixel: u16,
+    pub pixel_format: u16,
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct ImageReference {
     x: u32,
     y: u32,
     image_index: u32,
 }
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct ImageRange {
     x: u32,
     y: u32,
     image_index: u32,
-    image_count: u32,
+    images_count: u32,
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct Background {
     image: ImageReference,
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct TimeNumbers {
+    #[serde(skip_serializing_if = "Option::is_none")]
     tens: Option<ImageRange>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     ones: Option<ImageRange>,
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct Time {
+    #[serde(skip_serializing_if = "Option::is_none")]
     hours: Option<TimeNumbers>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     minutes: Option<TimeNumbers>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     seconds: Option<TimeNumbers>,
 }
 
-type Params = HashMap<u8, Vec<Param>>;
+pub type Params = HashMap<u8, Vec<Param>>;
 
 #[derive(Debug, PartialEq)]
-enum Param {
+pub enum Param {
     Bytes(Vec<u8>),
     Float(f32),
     Child(Params),
 }
 
-trait WatchfaceParams {
+pub trait WatchfaceParams {
     fn new() -> Self;
     fn append(&mut self, key: u8, parameters: Params);
 }
 
-#[derive(Debug, PartialEq, Default)]
-struct MiBandParams {
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct MiBandParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
     background: Option<Background>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     time: Option<Time>,
 }
 
@@ -126,7 +138,7 @@ fn parse_image_range(param: &Param) -> ImageRange {
                 image_range.image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
             }
             4 => {
-                image_range.image_count = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                image_range.images_count = bytes_param_to_usize(value.get(0).unwrap()) as u32;
             }
             _ => (),
         }
@@ -212,9 +224,9 @@ impl WatchfaceParams for MiBandParams {
 }
 
 #[derive(Debug, PartialEq)]
-struct Watchface<T: WatchfaceParams> {
-    parameters: T,
-    images: Vec<Image>,
+pub struct Watchface<T: WatchfaceParams> {
+    pub parameters: T,
+    pub images: Vec<Image>,
 }
 
 fn variable_width_value_parser(i: &mut Stream) -> PResult<(i64, usize)> {
@@ -231,25 +243,25 @@ fn variable_width_value_parser(i: &mut Stream) -> PResult<(i64, usize)> {
 }
 
 fn write_variable_width_value(value: i64) -> Vec<u8> {
-	let mut result = vec![];
-	let mut value_big_int = value as u64;
+    let mut result = vec![];
+    let mut value_big_int = value as u64;
 
-	for i in 0..10 {
-		// Read lower 7 bits of value
-		let byte = (value_big_int & 0x7F) as u8;
+    for i in 0..10 {
+        // Read lower 7 bits of value
+        let byte = (value_big_int & 0x7F) as u8;
 
-		value_big_int = value_big_int >> 7;
+        value_big_int = value_big_int >> 7;
 
-		// If no data left after this byte, we can stop
-		if value_big_int == 0 {
-			result.push(byte);
-			break
-		}
-		// Add byte with flag meaning the data continues in the next byte
-		result.push(byte | 0x80)
-	}
+        // If no data left after this byte, we can stop
+        if value_big_int == 0 {
+            result.push(byte);
+            break;
+        }
+        // Add byte with flag meaning the data continues in the next byte
+        result.push(byte | 0x80)
+    }
 
-	result
+    result
 }
 
 fn param_parser(i: &mut Stream) -> PResult<(u8, Param)> {
@@ -344,7 +356,7 @@ fn image_parse(i: &mut Stream) -> PResult<Image> {
     }
 
     // Read pixel data
-    let mut pixels = vec![0; (4 * width * height).into()];
+    let mut pixels = vec![0; 4usize * width as usize * height as usize];
     for y in 0..height {
         for x in 0..width {
             // read pixel color info
@@ -373,15 +385,15 @@ fn image_parse(i: &mut Stream) -> PResult<Image> {
                 let byte_per_pixel = bits_per_pixel / 8;
 
                 if byte_per_pixel == 4 {
-                    red = u8.parse_next(i)? as u16;
-                    green = u8.parse_next(i)? as u16;
-                    blue = u8.parse_next(i)? as u16;
-                    alpha = u8.parse_next(i)? as u16;
+                    red = u8.parse_next(i)?;
+                    green = u8.parse_next(i)?;
+                    blue = u8.parse_next(i)?;
+                    alpha = u8.parse_next(i)?;
                 } else {
                     let rgba;
                     if byte_per_pixel == 3 {
                         // 24 bits is 16 bit color data (big endian) with 8 bit alpha
-                        alpha = u8.parse_next(i)? as u16;
+                        alpha = u8.parse_next(i)?;
                         rgba = be_u16.parse_next(i)?;
                     } else {
                         // for the 16 bit images, the value is little endian
@@ -389,25 +401,25 @@ fn image_parse(i: &mut Stream) -> PResult<Image> {
                     }
                     if pixel_format == 0x13 {
                         // color is 16 bit (4:4:4:4) abgr
-                        alpha = (rgba & 0xF000) >> 8;
-                        blue = (rgba & 0x0F00) >> 4;
-                        green = rgba & 0x00F0;
-                        red = (rgba & 0x000F) << 4;
+                        alpha = ((rgba & 0xF000) >> 8) as u8;
+                        blue = ((rgba & 0x0F00) >> 4) as u8;
+                        green = (rgba & 0x00F0) as u8;
+                        red = ((rgba & 0x000F) << 4) as u8;
                     } else if pixel_format == 0x1C || pixel_format == 0x09 {
                         // color is 16bit (5:6:5) rgb
-                        red = (rgba & 0xF800) >> 8;
-                        green = (rgba & 0x07E0) >> 3;
-                        blue = (rgba & 0x001F) << 3;
+                        red = ((rgba & 0xF800) >> 8) as u8;
+                        green = ((rgba & 0x07E0) >> 3) as u8;
+                        blue = ((rgba & 0x001F) << 3) as u8;
                     } else {
                         // color is 16bit (5:6:5) bgr
-                        blue = (rgba & 0xF800) >> 8;
-                        green = (rgba & 0x07E0) >> 3;
-                        red = (rgba & 0x001F) << 3;
+                        blue = ((rgba & 0xF800) >> 8) as u8;
+                        green = ((rgba & 0x07E0) >> 3) as u8;
+                        red = ((rgba & 0x001F) << 3) as u8;
                     }
                 }
             }
 
-            let pixel_position = ((y * width + x) * 4) as usize;
+            let pixel_position = (y as usize * width as usize + x as usize) * 4;
             pixels[pixel_position] = red;
             pixels[pixel_position + 1] = green;
             pixels[pixel_position + 2] = blue;
@@ -543,7 +555,7 @@ fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchface<T>
     Ok(Watchface { parameters, images })
 }
 
-fn parse_watch_face_bin<T: WatchfaceParams>(bytes: &mut &[u8]) -> PResult<Watchface<T>> {
+pub fn parse_watch_face_bin<T: WatchfaceParams>(bytes: &mut &[u8]) -> PResult<Watchface<T>> {
     let res = bin_parser::<T>(Located::new(bytes));
     res
 }
@@ -602,13 +614,13 @@ mod tests {
                                 x: 16,
                                 y: 32,
                                 image_index: 0,
-                                image_count: 2
+                                images_count: 2
                             }),
                             ones: Some(ImageRange {
                                 x: 731,
                                 y: 12,
                                 image_index: 1,
-                                image_count: 7
+                                images_count: 7
                             })
                         }),
                         ..Default::default()
@@ -732,10 +744,7 @@ mod tests {
         let result = variable_width_value_parser(&mut Located::new(&bytes));
         assert!(result.is_ok());
         if let Ok((value, value_size)) = result {
-            assert_eq!(
-                (value, value_size),
-                (0x73, 1),
-            )
+            assert_eq!((value, value_size), (0x73, 1),)
         }
     }
 
@@ -746,10 +755,7 @@ mod tests {
         let result = variable_width_value_parser(&mut Located::new(&bytes));
         assert!(result.is_ok());
         if let Ok((value, value_size)) = result {
-            assert_eq!(
-                (value, value_size),
-                (0x2173, 2),
-            )
+            assert_eq!((value, value_size), (0x2173, 2),)
         }
     }
 
@@ -760,10 +766,7 @@ mod tests {
         let result = variable_width_value_parser(&mut Located::new(&bytes));
         assert!(result.is_ok());
         if let Ok((value, value_size)) = result {
-            assert_eq!(
-                (value, value_size),
-                (-13, 10),
-            )
+            assert_eq!((value, value_size), (-13, 10),)
         }
     }
 
@@ -791,10 +794,7 @@ mod tests {
         assert!(result.is_ok());
         if let Ok((value, value_size)) = result {
             dbg!((value as i32, value_size));
-            assert_eq!(
-                (value as i32, value_size),
-                (1073741824, 5),
-            )
+            assert_eq!((value as i32, value_size), (1073741824, 5),)
         }
     }
 
@@ -805,10 +805,7 @@ mod tests {
         let result = variable_width_value_parser(&mut Located::new(&bytes));
         assert!(result.is_ok());
         if let Ok((value, value_size)) = result {
-            assert_eq!(
-                (value, value_size),
-                (2147483648, 5),
-            )
+            assert_eq!((value, value_size), (2147483648, 5),)
         }
     }
 
@@ -819,31 +816,22 @@ mod tests {
         let result = variable_width_value_parser(&mut Located::new(&bytes));
         assert!(result.is_ok());
         if let Ok((value, value_size)) = result {
-            assert_eq!(
-                (value, value_size),
-                (4294967296, 5),
-            )
+            assert_eq!((value, value_size), (4294967296, 5),)
         }
     }
 
     #[test]
-    fn write_small_value_on_one_byte () {
-        assert_eq!(
-            write_variable_width_value(0x73),
-            vec![0x73],
-        )
+    fn write_small_value_on_one_byte() {
+        assert_eq!(write_variable_width_value(0x73), vec![0x73],)
     }
 
     #[test]
-    fn write_bigger_values_on_multiple_bytes () {
-        assert_eq!(
-            write_variable_width_value(0x2173),
-            vec![0xF3, 0x42],
-        )
+    fn write_bigger_values_on_multiple_bytes() {
+        assert_eq!(write_variable_width_value(0x2173), vec![0xF3, 0x42],)
     }
 
     #[test]
-    fn write_negative_values () {
+    fn write_negative_values() {
         assert_eq!(
             write_variable_width_value(-13),
             vec![0xF3, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
@@ -859,7 +847,7 @@ mod tests {
     // }
 
     #[test]
-    fn write_31_bit_value () {
+    fn write_31_bit_value() {
         assert_eq!(
             write_variable_width_value(1073741824),
             vec![0x80, 0x80, 0x80, 0x80, 0x04],
@@ -867,7 +855,7 @@ mod tests {
     }
 
     #[test]
-    fn write_32_bit_value () {
+    fn write_32_bit_value() {
         assert_eq!(
             write_variable_width_value(2147483648),
             vec![0x80, 0x80, 0x80, 0x80, 0x08],
@@ -875,11 +863,10 @@ mod tests {
     }
 
     #[test]
-    fn write_33_bit_value () {
+    fn write_33_bit_value() {
         assert_eq!(
             write_variable_width_value(4294967296),
             vec![0x80, 0x80, 0x80, 0x80, 0x10],
         )
     }
-
 }
