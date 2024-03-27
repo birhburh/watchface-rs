@@ -1,5 +1,5 @@
 use {
-    crate::common::*,
+    crate::common::*, // TODO: not use star
     serde::{Deserialize, Serialize},
     std::fmt::Debug,
 };
@@ -25,575 +25,25 @@ pub struct MiBandParams {
     pub other: Option<Other>,
 }
 
-impl MiBandParams {
-    fn parse_background(params: Params) -> Option<Background> {
-        let mut background = Background {
-            ..Default::default()
-        };
-
-        for (key, value) in params.into_iter() {
-            match key {
-                1 => {
-                    background.image = Some(parse_image_ref(value.get(0).unwrap()));
-                }
-                3 => {
-                    background.preview_en = Some(parse_image_ref(value.get(0).unwrap()));
-                }
-                4 => {
-                    background.preview_cn = Some(parse_image_ref(value.get(0).unwrap()));
-                }
-                5 => {
-                    background.preview_cn2 = Some(parse_image_ref(value.get(0).unwrap()));
-                }
-                _ => (),
-            }
-        }
-        Some(background)
-    }
-
-    fn parse_time(params: Params) -> Option<Time> {
-        let mut time = Time {
-            ..Default::default()
-        };
-
-        for (key, value) in params.into_iter() {
-            match key {
-                1 => {
-                    time.hours = Self::parse_time_numbers(value.get(0).unwrap());
-                }
-                2 => {
-                    time.minutes = Self::parse_time_numbers(value.get(0).unwrap());
-                }
-                3 => {
-                    time.seconds = Self::parse_time_numbers(value.get(0).unwrap());
-                }
-                11 => {
-                    time.drawing_order = parse_bool(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(time)
-    }
-
-    fn parse_activity(params: Params) -> Option<Activity> {
-        let mut activity = Activity {
-            ..Default::default()
-        };
-
-        for (key, value) in params.into_iter() {
-            match key {
-                1 => {
-                    activity.steps = Self::parse_steps(value.get(0).unwrap());
-                }
-                3 => {
-                    activity.calories = Self::parse_calories(value.get(0).unwrap());
-                }
-                4 => {
-                    activity.pulse = Self::parse_pulse(value.get(0).unwrap());
-                }
-                5 => {
-                    activity.distance = Self::parse_distance(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(activity)
-    }
-
-    fn parse_date(params: Params) -> Option<Date> {
-        let mut date = Date {
-            ..Default::default()
-        };
-
-        for (key, value) in params.into_iter() {
-            match key {
-                1 => {
-                    date.month_and_day_and_year =
-                        Self::parse_month_and_day_and_year(value.get(0).unwrap());
-                }
-                2 => {
-                    date.day_am_pm = Self::parse_day_am_pm(value.get(0).unwrap());
-                }
-                4 => {
-                    date.en_week_days = parse_image_range(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(date)
-    }
-
-    fn parse_weather(params: Params) -> Option<Weather> {
-        let mut weather = Weather {
-            ..Default::default()
-        };
-
-        for (key, value) in params.into_iter() {
-            match key {
-                1 => {
-                    weather.icon = Self::parse_icon(value.get(0).unwrap());
-                }
-                2 => {
-                    weather.temperature = Self::parse_temperature(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(weather)
-    }
-
-    fn parse_battery(params: Params) -> Option<Battery> {
-        let mut battery = Battery {
-            ..Default::default()
-        };
-
-        for (key, value) in params.into_iter() {
-            match key {
-                1 => {
-                    battery.battery_text = Self::parse_battery_text(value.get(0).unwrap());
-                }
-                2 => {
-                    battery.battery_icon = parse_image_range(value.get(0).unwrap());
-                }
-                3 => {
-                    battery.linear = Self::parse_linear(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(battery)
-    }
-
-    fn parse_status(params: Params) -> Option<Status> {
-        let mut status = Status {
-            ..Default::default()
-        };
-
-        for (key, value) in params.into_iter() {
-            match key {
-                1 => {
-                    status.do_not_disturb = parse_status_image(value.get(0).unwrap());
-                }
-                2 => {
-                    status.lock = parse_status_image(value.get(0).unwrap());
-                }
-                3 => {
-                    status.bluetooth = parse_status_image(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(status)
-    }
-
-    fn parse_other(params: Params) -> Option<Other> {
-        let mut other = Other {
-            ..Default::default()
-        };
-
-        for (key, value) in params.into_iter() {
-            match key {
-                1 => {
-                    other.animation = Self::parse_animation(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(other)
-    }
-
-    fn parse_steps(param: &Param) -> Option<Steps> {
-        let mut steps = Steps {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    steps.number = parse_number_in_rect(value.get(0).unwrap());
-                }
-                2 => {
-                    steps.prefix_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                3 => {
-                    steps.suffix_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                _ => (),
-            }
-        }
-        Some(steps)
-    }
-
-    fn parse_calories(param: &Param) -> Option<Calories> {
-        let mut calories = Calories {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    calories.number = parse_number_in_rect(value.get(0).unwrap());
-                }
-                2 => {
-                    calories.suffix_image_index =
-                        number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                _ => (),
-            }
-        }
-        Some(calories)
-    }
-
-    fn parse_pulse(param: &Param) -> Option<Pulse> {
-        let mut pulse = Pulse {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    pulse.number = parse_number_in_rect(value.get(0).unwrap());
-                }
-                2 => {
-                    pulse.prefix_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                3 => {
-                    pulse.no_data_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                4 => {
-                    pulse.suffix_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                _ => (),
-            }
-        }
-        Some(pulse)
-    }
-
-    fn parse_distance(param: &Param) -> Option<Distance> {
-        let mut distance = Distance {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    distance.number = parse_number_in_rect(value.get(0).unwrap());
-                }
-                2 => {
-                    distance.km_suffix_image_index =
-                        number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                3 => {
-                    distance.decimal_point_image_index =
-                        number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                4 => {
-                    distance.miles_suffix_image_index =
-                        number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                _ => (),
-            }
-        }
-        Some(distance)
-    }
-
-    fn parse_separate(param: &Param) -> Option<Separate> {
-        let mut separate = Separate {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    separate.month = parse_number_in_rect(value.get(0).unwrap());
-                }
-                4 => {
-                    separate.day = parse_number_in_rect(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(separate)
-    }
-
-    fn parse_month_and_day_and_year(param: &Param) -> Option<MonthAndDayAndYear> {
-        let mut month_and_day_and_year = MonthAndDayAndYear {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    month_and_day_and_year.separate = Self::parse_separate(value.get(0).unwrap());
-                }
-                4 => {
-                    month_and_day_and_year.two_digits_month = parse_bool(value.get(0).unwrap());
-                }
-                5 => {
-                    month_and_day_and_year.two_digits_day = parse_bool(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(month_and_day_and_year)
-    }
-
-    fn parse_day_am_pm(param: &Param) -> Option<DayAmPm> {
-        let mut day_am_pm = DayAmPm {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    day_am_pm.x = number_param_to_usize(value.get(0).unwrap()) as i32;
-                }
-                2 => {
-                    day_am_pm.y = number_param_to_usize(value.get(0).unwrap()) as i32;
-                }
-                3 => {
-                    day_am_pm.image_index_amcn =
-                        number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                4 => {
-                    day_am_pm.image_index_pmcn =
-                        number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                5 => {
-                    day_am_pm.image_index_amen =
-                        number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                6 => {
-                    day_am_pm.image_index_pmen =
-                        number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                _ => (),
-            }
-        }
-        Some(day_am_pm)
-    }
-
-    fn parse_icon(param: &Param) -> Option<Icon> {
-        let mut icon = Icon {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                2 => {
-                    icon.custom_icon = parse_image_range(value.get(0).unwrap());
-                }
-                3 => {
-                    icon.position1 = parse_coordinates(value.get(0).unwrap());
-                }
-                4 => {
-                    icon.position2 = parse_coordinates(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(icon)
-    }
-
-    fn parse_segments(params: &Vec<Param>) -> Vec<Coordinates> {
-        let mut result = vec![];
-
-        for param in params {
-            result.push(parse_coordinates(param).unwrap());
-        }
-        result
-    }
-
-    fn parse_animation(param: &Param) -> Option<Animation> {
-        let mut animation = Animation {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    animation.animation_images = parse_image_range(value.get(0).unwrap());
-                }
-                2 => {
-                    animation.speed = number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                3 => {
-                    animation.repeat_count = number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                4 => {
-                    animation.unknown_v4 = number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                _ => (),
-            }
-        }
-        Some(animation)
-    }
-
-    fn parse_temperature(param: &Param) -> Option<Temperature> {
-        let mut temperature = Temperature {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    temperature.current = parse_temperature_type(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(temperature)
-    }
-
-    fn parse_linear(param: &Param) -> Option<Linear> {
-        let mut linear = Linear {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    linear.start_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                2 => {
-                    linear.segments = Self::parse_segments(value);
-                }
-                _ => (),
-            }
-        }
-        Some(linear)
-    }
-
-    fn parse_battery_text(param: &Param) -> Option<BatteryText> {
-        let mut battery_text = BatteryText {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    battery_text.number = parse_number_in_rect(value.get(0).unwrap());
-                }
-                3 => {
-                    battery_text.prefix_image_index =
-                        number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                4 => {
-                    battery_text.suffix_image_index =
-                        number_param_to_usize(value.get(0).unwrap()) as u32;
-                }
-                _ => (),
-            }
-        }
-        Some(battery_text)
-    }
-
-    fn parse_time_numbers(param: &Param) -> Option<TimeNumbers> {
-        let mut numbers = TimeNumbers {
-            ..Default::default()
-        };
-        let subvalue = match param {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        for (key, value) in subvalue.into_iter() {
-            match key {
-                1 => {
-                    numbers.tens = parse_image_range(value.get(0).unwrap());
-                }
-                2 => {
-                    numbers.ones = parse_image_range(value.get(0).unwrap());
-                }
-                _ => (),
-            }
-        }
-        Some(numbers)
-    }
-}
-
 impl WatchfaceParams for MiBandParams {
     fn new() -> Self {
         MiBandParams {
             ..Default::default()
         }
     }
+}
 
-    fn append(&mut self, key: u8, params: Params) {
+impl Transform for MiBandParams {
+    fn transform(&mut self, key: u8, params: &Vec<Param>) {
         match key {
-            2 => {
-                self.background = Self::parse_background(params);
-            }
-            3 => {
-                self.time = Self::parse_time(params);
-            }
-            4 => {
-                self.activity = Self::parse_activity(params);
-            }
-            5 => {
-                self.date = Self::parse_date(params);
-            }
-            6 => {
-                self.weather = Self::parse_weather(params);
-            }
-            8 => {
-                self.status = Self::parse_status(params);
-            }
-            9 => {
-                self.battery = Self::parse_battery(params);
-            }
-            11 => {
-                self.other = Self::parse_other(params);
-            }
+            2 => self.background.transform(key, params),
+            3 => self.time.transform(key, params),
+            4 => self.activity.transform(key, params),
+            5 => self.date.transform(key, params),
+            6 => self.weather.transform(key, params),
+            8 => self.status.transform(key, params),
+            9 => self.battery.transform(key, params),
+            11 => self.other.transform(key, params),
             _ => (),
         }
     }
@@ -612,6 +62,44 @@ pub struct Background {
     pub preview_cn2: Option<ImageReference>,
 }
 
+impl Transform for Option<Background> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Background {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(background) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        background.image = parse_image_ref(value.get(0).unwrap());
+                    }
+                    3 => {
+                        background.preview_en = parse_image_ref(value.get(0).unwrap());
+                    }
+                    4 => {
+                        background.preview_cn = parse_image_ref(value.get(0).unwrap());
+                    }
+                    5 => {
+                        background.preview_cn2 = parse_image_ref(value.get(0).unwrap());
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Time {
@@ -625,6 +113,38 @@ pub struct Time {
     pub drawing_order: Option<bool>,
 }
 
+impl Transform for Option<Time> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Time {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(time) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => time.hours.transform(*key, value),
+                    2 => time.minutes.transform(*key, value),
+                    3 => time.seconds.transform(*key, value),
+                    11 => {
+                        time.drawing_order = parse_bool(value.get(0).unwrap());
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct TimeNumbers {
@@ -632,6 +152,38 @@ pub struct TimeNumbers {
     pub tens: Option<ImageRange>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ones: Option<ImageRange>,
+}
+
+impl Transform for Option<TimeNumbers> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(TimeNumbers {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(numbers) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        numbers.tens = parse_image_range(value.get(0).unwrap());
+                    }
+                    2 => {
+                        numbers.ones = parse_image_range(value.get(0).unwrap());
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -648,6 +200,36 @@ pub struct Activity {
     unknown_v7: i32,
 }
 
+impl Transform for Option<Activity> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Activity {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(activity) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => activity.steps.transform(*key, value),
+                    3 => activity.calories.transform(*key, value),
+                    4 => activity.pulse.transform(*key, value),
+                    5 => activity.distance.transform(*key, value),
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Steps {
@@ -659,6 +241,43 @@ pub struct Steps {
     pub suffix_image_index: u32,
 }
 
+impl Transform for Option<Steps> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Steps {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(steps) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        steps.number = parse_number_in_rect(value.get(0).unwrap());
+                    }
+                    2 => {
+                        steps.prefix_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    3 => {
+                        steps.suffix_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Calories {
@@ -666,6 +285,39 @@ pub struct Calories {
     pub number: Option<NumberInRect>,
     #[serde(skip_serializing_if = "is_zero")]
     pub suffix_image_index: u32,
+}
+
+impl Transform for Option<Calories> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Calories {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(calories) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        calories.number = parse_number_in_rect(value.get(0).unwrap());
+                    }
+                    2 => {
+                        calories.suffix_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -681,6 +333,47 @@ pub struct Pulse {
     pub suffix_image_index: u32,
 }
 
+impl Transform for Option<Pulse> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Pulse {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(pulse) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        pulse.number = parse_number_in_rect(value.get(0).unwrap());
+                    }
+                    2 => {
+                        pulse.prefix_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    3 => {
+                        pulse.no_data_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    4 => {
+                        pulse.suffix_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Distance {
@@ -694,6 +387,47 @@ pub struct Distance {
     pub miles_suffix_image_index: u32,
 }
 
+impl Transform for Option<Distance> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Distance {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(distance) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        distance.number = parse_number_in_rect(value.get(0).unwrap());
+                    }
+                    2 => {
+                        distance.km_suffix_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    3 => {
+                        distance.decimal_point_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    4 => {
+                        distance.miles_suffix_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Date {
@@ -703,6 +437,41 @@ pub struct Date {
     pub day_am_pm: Option<DayAmPm>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "ENWeekDays")]
     pub en_week_days: Option<ImageRange>,
+}
+
+impl Transform for Option<Date> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Date {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(date) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        date.month_and_day_and_year.transform(*key, value);
+                    }
+                    2 => {
+                        date.day_am_pm.transform(*key, value);
+                    }
+                    4 => {
+                        date.en_week_days = parse_image_range(value.get(0).unwrap());
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -716,6 +485,41 @@ pub struct MonthAndDayAndYear {
     pub two_digits_day: Option<bool>,
 }
 
+impl Transform for Option<MonthAndDayAndYear> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(MonthAndDayAndYear {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(month_and_day_and_year) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        month_and_day_and_year.separate.transform(*key, value);
+                    }
+                    4 => {
+                        month_and_day_and_year.two_digits_month = parse_bool(value.get(0).unwrap());
+                    }
+                    5 => {
+                        month_and_day_and_year.two_digits_day = parse_bool(value.get(0).unwrap());
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Separate {
@@ -723,6 +527,38 @@ pub struct Separate {
     pub month: Option<NumberInRect>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub day: Option<NumberInRect>,
+}
+
+impl Transform for Option<Separate> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Separate {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(separate) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        separate.month = parse_number_in_rect(value.get(0).unwrap());
+                    }
+                    4 => {
+                        separate.day = parse_number_in_rect(value.get(0).unwrap());
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -740,6 +576,54 @@ pub struct DayAmPm {
     pub image_index_pmen: u32,
 }
 
+impl Transform for Option<DayAmPm> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(DayAmPm {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(day_am_pm) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        day_am_pm.x = number_param_to_usize(value.get(0).unwrap()) as i32;
+                    }
+                    2 => {
+                        day_am_pm.y = number_param_to_usize(value.get(0).unwrap()) as i32;
+                    }
+                    3 => {
+                        day_am_pm.image_index_amcn =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    4 => {
+                        day_am_pm.image_index_pmcn =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    5 => {
+                        day_am_pm.image_index_amen =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    6 => {
+                        day_am_pm.image_index_pmen =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Status {
@@ -751,6 +635,41 @@ pub struct Status {
     pub bluetooth: Option<StatusImage>,
 }
 
+impl Transform for Option<Status> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Status {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(status) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        status.do_not_disturb = parse_status_image(value.get(0).unwrap());
+                    }
+                    2 => {
+                        status.lock = parse_status_image(value.get(0).unwrap());
+                    }
+                    3 => {
+                        status.bluetooth = parse_status_image(value.get(0).unwrap());
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Weather {
@@ -758,6 +677,34 @@ pub struct Weather {
     pub icon: Option<Icon>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<Temperature>,
+}
+
+impl Transform for Option<Weather> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Weather {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(weather) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => weather.icon.transform(*key, value),
+                    2 => weather.temperature.transform(*key, value),
+                    _ => (),
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -771,11 +718,75 @@ pub struct Icon {
     pub position2: Option<Coordinates>,
 }
 
+impl Transform for Option<Icon> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Icon {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(icon) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    2 => {
+                        icon.custom_icon = parse_image_range(value.get(0).unwrap());
+                    }
+                    3 => {
+                        icon.position1 = parse_coordinates(value.get(0).unwrap());
+                    }
+                    4 => {
+                        icon.position2 = parse_coordinates(value.get(0).unwrap());
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Temperature {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current: Option<TemperatureType>,
+}
+
+impl Transform for Option<Temperature> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Temperature {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(temperature) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        temperature.current = parse_temperature_type(value.get(0).unwrap());
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -789,6 +800,39 @@ pub struct Battery {
     pub linear: Option<Linear>,
 }
 
+impl Transform for Option<Battery> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Battery {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(battery) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => battery.battery_text.transform(*key, value),
+                    2 => {
+                        battery.battery_icon = parse_image_range(value.get(0).unwrap());
+                    }
+                    3 => {
+                        battery.linear.transform(*key, value);
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct BatteryText {
@@ -800,11 +844,91 @@ pub struct BatteryText {
     pub suffix_image_index: u32,
 }
 
+impl Transform for Option<BatteryText> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(BatteryText {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(battery_text) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        battery_text.number = parse_number_in_rect(value.get(0).unwrap());
+                    }
+                    3 => {
+                        battery_text.prefix_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    4 => {
+                        battery_text.suffix_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Linear {
     pub start_image_index: u32,
-    pub segments: Vec<Coordinates>,
+    pub segments: Segments,
+}
+
+impl Transform for Option<Linear> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Linear {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(linear) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        linear.start_image_index =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    2 => {
+                        linear.segments.transform(*key, value);
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+}
+
+type Segments = Vec<Coordinates>;
+
+impl Transform for Segments {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        for param in params {
+            self.push(parse_coordinates(param).unwrap());
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -812,6 +936,33 @@ pub struct Linear {
 pub struct Other {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub animation: Option<Animation>,
+}
+
+impl Transform for Option<Other> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Other {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(other) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => other.animation.transform(*key, value),
+                    _ => (),
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -822,4 +973,43 @@ pub struct Animation {
     pub speed: u32,
     pub repeat_count: u32,
     pub unknown_v4: u32,
+}
+
+impl Transform for Option<Animation> {
+    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+        match self {
+            None => {
+                *self = Some(Animation {
+                    ..Default::default()
+                });
+            }
+            Some(_) => (),
+        }
+
+        let params = match params.get(0).unwrap() {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        if let Some(animation) = self {
+            for (key, value) in params.into_iter() {
+                match key {
+                    1 => {
+                        animation.animation_images = parse_image_range(value.get(0).unwrap());
+                    }
+                    2 => {
+                        animation.speed = number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    3 => {
+                        animation.repeat_count =
+                            number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    4 => {
+                        animation.unknown_v4 = number_param_to_usize(value.get(0).unwrap()) as u32;
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
 }

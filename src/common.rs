@@ -1,9 +1,6 @@
 use {
     serde::{Deserialize, Serialize},
-    std::{
-        collections::{hash_map::Entry, HashMap},
-        fmt::Debug,
-    },
+    std::{collections::HashMap, fmt::Debug},
 };
 
 pub type Params = HashMap<u8, Vec<Param>>;
@@ -13,10 +10,12 @@ pub struct Watchface<T: WatchfaceParams> {
     pub parameters: T,
     pub images: Vec<Image>,
 }
+pub trait Transform {
+    fn transform(&mut self, key: u8, params: &Vec<Param>);
+}
 
-pub trait WatchfaceParams {
+pub trait WatchfaceParams: Transform {
     fn new() -> Self;
-    fn append(&mut self, key: u8, parameters: Params);
 }
 
 #[derive(Debug, PartialEq)]
@@ -158,7 +157,7 @@ pub fn is_zero(num: &u32) -> bool {
     *num == 0
 }
 
-pub fn parse_image_ref(param: &Param) -> ImageReference {
+pub fn parse_image_ref(param: &Param) -> Option<ImageReference> {
     let mut image_ref = ImageReference {
         ..Default::default()
     };
@@ -182,7 +181,7 @@ pub fn parse_image_ref(param: &Param) -> ImageReference {
             _ => (),
         }
     }
-    image_ref
+    Some(image_ref)
 }
 
 pub fn parse_image_range(param: &Param) -> Option<ImageRange> {

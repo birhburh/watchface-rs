@@ -48,39 +48,6 @@ pub fn write_variable_width_value(value: i64) -> Vec<u8> {
     result
 }
 
-pub fn param_parser(i: &mut Stream) -> PResult<(u8, Param)> {
-    // Read parameters info
-    let (field_descriptor, _) = variable_width_value_parser(i)?;
-
-    let key = (field_descriptor >> 3) as u8;
-    let has_child = field_descriptor & 0x02 == 0x02;
-
-    // From the second byte on is the value
-    let value;
-    let is_float = field_descriptor & 0x05 == 0x05;
-    if is_float {
-        value = Param::Float(le_f32.parse_next(i)?);
-    } else {
-        // variable width value
-        let (field_value, _) = variable_width_value_parser(i)?;
-
-        if has_child {
-            // When node has Child, field value is size of Child
-
-            let child_size = field_value as usize;
-            if child_size <= 0 {
-                panic!("Child size of 0 or less");
-            }
-            // Recursive call to read Child data
-            let child = params_parser(i, child_size)?;
-            value = Param::Child(child);
-        } else {
-            value = Param::Number(field_value);
-        }
-    }
-    Ok((key, value))
-}
-
 pub fn image_parse(i: &mut Stream) -> PResult<Image> {
     let signature = le_u16.parse_next(i)?;
     if signature != 0x4D42 {
@@ -254,6 +221,39 @@ pub fn params_parser(i: &mut Stream, max_size: usize) -> PResult<Params> {
     Ok(params)
 }
 
+pub fn param_parser(i: &mut Stream) -> PResult<(u8, Param)> {
+    // Read parameters info
+    let (field_descriptor, _) = variable_width_value_parser(i)?;
+
+    let key = (field_descriptor >> 3) as u8;
+    let has_child = field_descriptor & 0x02 == 0x02;
+
+    // From the second byte on is the value
+    let value;
+    let is_float = field_descriptor & 0x05 == 0x05;
+    if is_float {
+        value = Param::Float(le_f32.parse_next(i)?);
+    } else {
+        // variable width value
+        let (field_value, _) = variable_width_value_parser(i)?;
+
+        if has_child {
+            // When node has Child, field value is size of Child
+
+            let child_size = field_value as usize;
+            if child_size <= 0 {
+                panic!("Child size of 0 or less");
+            }
+            // Recursive call to read Child data
+            let child = params_parser(i, child_size)?;
+            value = Param::Child(child);
+        } else {
+            value = Param::Number(field_value);
+        }
+    }
+    Ok((key, value))
+}
+
 pub fn bytes_to_usize(bytes: &[u8]) -> usize {
     let zeros = (0..(size_of::<usize>() - bytes.len()))
         .map(|_| 0u8)
@@ -298,7 +298,7 @@ pub fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchfac
 
         let subvalue = match value.get(0).unwrap() {
             Child(child) => child,
-            _ => panic!("First param should be child param"),
+            _ => panic!("First param should be child param"), // TODO: use adequate messages in all panics
         };
 
         let offset = number_param_to_usize(&subvalue.get(&1).unwrap()[0]);
@@ -307,7 +307,8 @@ pub fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchfac
         i.next_slice(offset);
         let params = params_parser(&mut i, size)?;
 
-        parameters.append(*key, params);
+        let params = vec![Param::Child(params)];
+        parameters.transform(*key, &params);
     }
 
     i.reset(&params_start);
