@@ -26,15 +26,15 @@ pub struct Image {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct ImageReference {
-    x: u32,
-    y: u32,
+    x: i32,
+    y: i32,
     image_index: u32,
 }
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct ImageRange {
-    x: u32,
-    y: u32,
+    x: i32,
+    y: i32,
     image_index: u32,
     images_count: u32,
 }
@@ -97,8 +97,8 @@ struct MonthAndDayAndYear {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct DayAmPm {
-    x: u32,
-    y: u32,
+    x: i32,
+    y: i32,
     #[serde(rename = "ImageIndexAMCN")]
     image_index_amcn: u32,
     #[serde(rename = "ImageIndexPMCN")]
@@ -107,6 +107,30 @@ struct DayAmPm {
     image_index_amen: u32,
     #[serde(rename = "ImageIndexPMEN")]
     image_index_pmen: u32,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct StatusPosition {
+    x: i32,
+    y: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    alignment: Option<Alignment>,
+    #[serde(skip_serializing_if = "is_zero")]
+    unknown4: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    unknown5: u32,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct StatusImage {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    coordinates: Option<StatusPosition>,
+    #[serde(skip_serializing_if = "is_zero")]
+    on_image_index: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    off_image_index: u32,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -122,9 +146,20 @@ struct Date {
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
+struct Status {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    do_not_disturb: Option<StatusImage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lock: Option<StatusImage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bluetooth: Option<StatusImage>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct Coordinates {
-    x: u32,
-    y: u32,
+    x: i32,
+    y: i32,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -194,6 +229,8 @@ struct Battery {
     #[serde(skip_serializing_if = "Option::is_none")]
     battery_text: Option<BatteryText>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    battery_icon: Option<ImageRange>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     linear: Option<Linear>,
 }
 
@@ -256,13 +293,13 @@ impl TryFrom<usize> for Alignment {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct NumberInRect {
-    top_left_x: u32,
-    top_left_y: u32,
-    bottom_right_x: u32,
-    bottom_right_y: u32,
+    top_left_x: i32,
+    top_left_y: i32,
+    bottom_right_x: i32,
+    bottom_right_y: i32,
     alignment: Alignment,
-    spacing_x: u32,
-    spacing_y: u32,
+    spacing_x: i32,
+    spacing_y: i32,
     image_index: u32,
     images_count: u32,
 }
@@ -311,8 +348,11 @@ struct Pulse {
 struct Distance {
     #[serde(skip_serializing_if = "Option::is_none")]
     number: Option<NumberInRect>,
+    #[serde(skip_serializing_if = "is_zero")]
     km_suffix_image_index: u32,
+    #[serde(skip_serializing_if = "is_zero")]
     decimal_point_image_index: u32,
+    #[serde(skip_serializing_if = "is_zero")]
     miles_suffix_image_index: u32,
 }
 
@@ -356,6 +396,8 @@ pub struct MiBandParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     date: Option<Date>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    status: Option<Status>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     weather: Option<Weather>,
     #[serde(skip_serializing_if = "Option::is_none")]
     battery: Option<Battery>,
@@ -376,10 +418,10 @@ fn parse_image_ref(param: &Param) -> ImageReference {
     for (key, value) in subvalue.into_iter() {
         match key {
             1 => {
-                image_ref.x = number_param_to_usize(value.get(0).unwrap()) as u32;
+                image_ref.x = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             2 => {
-                image_ref.y = number_param_to_usize(value.get(0).unwrap()) as u32;
+                image_ref.y = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             3 => {
                 image_ref.image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
@@ -403,10 +445,10 @@ fn parse_image_range(param: &Param) -> Option<ImageRange> {
     for (key, value) in subvalue.into_iter() {
         match key {
             1 => {
-                image_range.x = number_param_to_usize(value.get(0).unwrap()) as u32;
+                image_range.x = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             2 => {
-                image_range.y = number_param_to_usize(value.get(0).unwrap()) as u32;
+                image_range.y = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             3 => {
                 image_range.image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
@@ -418,6 +460,70 @@ fn parse_image_range(param: &Param) -> Option<ImageRange> {
         }
     }
     Some(image_range)
+}
+
+fn parse_status_image(param: &Param) -> Option<StatusImage> {
+    let mut status_image = StatusImage {
+        ..Default::default()
+    };
+
+    let subvalue = match param {
+        Param::Child(child) => child,
+        _ => panic!("First param should be child param"),
+    };
+
+    for (key, value) in subvalue.into_iter() {
+        match key {
+            1 => {
+                status_image.coordinates = parse_status_position(value.get(0).unwrap());
+            }
+            2 => {
+                status_image.on_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            3 => {
+                status_image.off_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            _ => (),
+        }
+    }
+    Some(status_image)
+}
+
+fn parse_status_position(param: &Param) -> Option<StatusPosition> {
+    let mut status_position = StatusPosition {
+        ..Default::default()
+    };
+
+    let subvalue = match param {
+        Param::Child(child) => child,
+        _ => panic!("First param should be child param"),
+    };
+
+    for (key, value) in subvalue.into_iter() {
+        match key {
+            1 => {
+                status_position.x = number_param_to_usize(value.get(0).unwrap()) as i32;
+            }
+            2 => {
+                status_position.y = number_param_to_usize(value.get(0).unwrap()) as i32;
+            }
+            3 => {
+                status_position.alignment =
+                    match number_param_to_usize(value.get(0).unwrap()).try_into() {
+                        Ok(v) => Some(v),
+                        Err(_) => panic!("Wrong aligment"),
+                    };
+            }
+            3 => {
+                status_position.unknown4 = number_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            3 => {
+                status_position.unknown5 = number_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            _ => (),
+        }
+    }
+    Some(status_position)
 }
 
 fn parse_number_in_rect(param: &Param) -> Option<NumberInRect> {
@@ -433,16 +539,16 @@ fn parse_number_in_rect(param: &Param) -> Option<NumberInRect> {
     for (key, value) in subvalue.into_iter() {
         match key {
             1 => {
-                number_in_rect.top_left_x = number_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.top_left_x = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             2 => {
-                number_in_rect.top_left_y = number_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.top_left_y = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             3 => {
-                number_in_rect.bottom_right_x = number_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.bottom_right_x = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             4 => {
-                number_in_rect.bottom_right_y = number_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.bottom_right_y = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             5 => {
                 number_in_rect.alignment =
@@ -452,10 +558,10 @@ fn parse_number_in_rect(param: &Param) -> Option<NumberInRect> {
                     };
             }
             6 => {
-                number_in_rect.spacing_x = number_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.spacing_x = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             7 => {
-                number_in_rect.spacing_y = number_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.spacing_y = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             8 => {
                 number_in_rect.image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
@@ -491,10 +597,10 @@ fn parse_coordinates(param: &Param) -> Option<Coordinates> {
     for (key, value) in subvalue.into_iter() {
         match key {
             1 => {
-                coordinates.x = number_param_to_usize(value.get(0).unwrap()) as u32;
+                coordinates.x = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             2 => {
-                coordinates.y = number_param_to_usize(value.get(0).unwrap()) as u32;
+                coordinates.y = number_param_to_usize(value.get(0).unwrap()) as i32;
             }
             _ => (),
         }
@@ -659,6 +765,9 @@ impl MiBandParams {
                 1 => {
                     battery.battery_text = Self::parse_battery_text(value.get(0).unwrap());
                 }
+                2 => {
+                    battery.battery_icon = parse_image_range(value.get(0).unwrap());
+                }
                 3 => {
                     battery.linear = Self::parse_linear(value.get(0).unwrap());
                 }
@@ -666,6 +775,28 @@ impl MiBandParams {
             }
         }
         Some(battery)
+    }
+
+    fn parse_status(params: Params) -> Option<Status> {
+        let mut status = Status {
+            ..Default::default()
+        };
+
+        for (key, value) in params.into_iter() {
+            match key {
+                1 => {
+                    status.do_not_disturb = parse_status_image(value.get(0).unwrap());
+                }
+                2 => {
+                    status.lock = parse_status_image(value.get(0).unwrap());
+                }
+                3 => {
+                    status.bluetooth = parse_status_image(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        Some(status)
     }
 
     fn parse_other(params: Params) -> Option<Other> {
@@ -856,10 +987,10 @@ impl MiBandParams {
         for (key, value) in subvalue.into_iter() {
             match key {
                 1 => {
-                    day_am_pm.x = number_param_to_usize(value.get(0).unwrap()) as u32;
+                    day_am_pm.x = number_param_to_usize(value.get(0).unwrap()) as i32;
                 }
                 2 => {
-                    day_am_pm.y = number_param_to_usize(value.get(0).unwrap()) as u32;
+                    day_am_pm.y = number_param_to_usize(value.get(0).unwrap()) as i32;
                 }
                 3 => {
                     day_am_pm.image_index_amcn =
@@ -1066,6 +1197,9 @@ impl WatchfaceParams for MiBandParams {
             6 => {
                 self.weather = Self::parse_weather(params);
             }
+            8 => {
+                self.status = Self::parse_status(params);
+            }
             9 => {
                 self.battery = Self::parse_battery(params);
             }
@@ -1199,7 +1333,9 @@ fn image_parse(i: &mut Stream) -> PResult<Image> {
                 u8.parse_next(i)?,
                 u8.parse_next(i)?,
                 u8.parse_next(i)?,
-                if (transparent_palette_color != 0) && (color_number == transparent_palette_color - 1) {
+                if (transparent_palette_color != 0)
+                    && (color_number == transparent_palette_color - 1)
+                {
                     0xFF
                 } else {
                     0x00
