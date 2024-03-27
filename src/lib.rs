@@ -514,10 +514,10 @@ fn parse_status_position(param: &Param) -> Option<StatusPosition> {
                         Err(_) => panic!("Wrong aligment"),
                     };
             }
-            3 => {
+            4 => {
                 status_position.unknown4 = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
-            3 => {
+            5 => {
                 status_position.unknown5 = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             _ => (),
@@ -1234,7 +1234,7 @@ fn write_variable_width_value(value: i64) -> Vec<u8> {
     let mut result = vec![];
     let mut value_big_int = value as u64;
 
-    for i in 0..10 {
+    for _ in 0..10 {
         // Read lower 7 bits of value
         let byte = (value_big_int & 0x7F) as u8;
 
@@ -1266,7 +1266,7 @@ fn param_parser(i: &mut Stream) -> PResult<(u8, Param)> {
         value = Param::Float(le_f32.parse_next(i)?);
     } else {
         // variable width value
-        let (field_value, value_size) = variable_width_value_parser(i)?;
+        let (field_value, _) = variable_width_value_parser(i)?;
 
         if has_child {
             // When node has Child, field value is size of Child
@@ -1323,7 +1323,6 @@ fn image_parse(i: &mut Stream) -> PResult<Image> {
         panic!("Row size is not as expected (Padding ?)")
     }
 
-    let mut palette_size = 0;
     let mut palette = vec![];
 
     if palette_colors_count > 0 {
@@ -1344,12 +1343,7 @@ fn image_parse(i: &mut Stream) -> PResult<Image> {
             u8.parse_next(i)?;
             palette.push(color);
         }
-
-        palette_size = palette_colors_count * 4;
     }
-
-    dbg!(&palette);
-    dbg!(palette_size);
 
     let mut prev_byte = -1;
     let mut val = 0;
@@ -1368,7 +1362,7 @@ fn image_parse(i: &mut Stream) -> PResult<Image> {
                     let pixels_per_byte = 8 / bits_per_pixel;
 
                     let new_byte = ((x / pixels_per_byte) as f32).floor() as i32;
-                    let byte = if new_byte > prev_byte {
+                    let byte = if new_byte != prev_byte {
                         prev_byte = new_byte;
                         val = u8.parse_next(i)?;
                         val

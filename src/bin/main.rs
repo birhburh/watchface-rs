@@ -15,10 +15,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         path.file_stem().unwrap().to_str().unwrap()
     );
 
+    println!("Reading {}", path.to_str().unwrap());
     let bytes = fs::read(&path).expect("no file found");
     let watchface = parse_watch_face_bin::<MiBandParams>(&mut &bytes[..]).unwrap();
     let res = serde_json::to_string_pretty(&watchface.parameters).unwrap();
 
+    // TODO: Probably better to show error to not remove existing, probably modified, extracted watchface folder
     match fs::create_dir(&output) {
         Err(e) => match e.kind() {
             ErrorKind::AlreadyExists => (),
