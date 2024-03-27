@@ -10,7 +10,10 @@ use {
 fn main() -> Result<(), Box<dyn Error>> {
     let path = std::env::args().nth(1).expect("no path given");
     let path = std::path::PathBuf::from(path);
-    let output = format!("{}_rs_extracted", path.file_stem().unwrap().to_str().unwrap());
+    let output = format!(
+        "{}_rs_extracted",
+        path.file_stem().unwrap().to_str().unwrap()
+    );
 
     let bytes = fs::read(&path).expect("no file found");
     let watchface = parse_watch_face_bin::<MiBandParams>(&mut &bytes[..]).unwrap();
@@ -27,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     fs::write(format!("{output}/watchface.json"), res).expect("cannot write watchface.json");
 
     for (i, image) in watchface.images.iter().enumerate() {
-        let file = File::create(format!("{output}/{i}.png"),).unwrap();
+        let file = File::create(format!("{output}/{i}.png")).unwrap();
         let w = &mut BufWriter::new(file);
         let mut enc = png::Encoder::new(w, image.width as u32, image.height as u32);
         enc.set_color(png::ColorType::Rgba);

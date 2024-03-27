@@ -43,7 +43,14 @@ struct ImageRange {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct Background {
-    image: ImageReference,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    image: Option<ImageReference>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "PreviewEN")]
+    preview_en: Option<ImageReference>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "PreviewCN")]
+    preview_cn: Option<ImageReference>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "PreviewCN2")]
+    preview_cn2: Option<ImageReference>,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -64,6 +71,267 @@ struct Time {
     minutes: Option<TimeNumbers>,
     #[serde(skip_serializing_if = "Option::is_none")]
     seconds: Option<TimeNumbers>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    drawing_order: Option<bool>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Separate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    month: Option<NumberInRect>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    day: Option<NumberInRect>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct MonthAndDayAndYear {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    separate: Option<Separate>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    two_digits_month: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    two_digits_day: Option<bool>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct DayAmPm {
+    x: u32,
+    y: u32,
+    #[serde(rename = "ImageIndexAMCN")]
+    image_index_amcn: u32,
+    #[serde(rename = "ImageIndexPMCN")]
+    image_index_pmcn: u32,
+    #[serde(rename = "ImageIndexAMEN")]
+    image_index_amen: u32,
+    #[serde(rename = "ImageIndexPMEN")]
+    image_index_pmen: u32,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Date {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    month_and_day_and_year: Option<MonthAndDayAndYear>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    day_am_pm: Option<DayAmPm>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "ENWeekDays")]
+    en_week_days: Option<ImageRange>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Coordinates {
+    x: u32,
+    y: u32,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Icon {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    custom_icon: Option<ImageRange>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    position1: Option<Coordinates>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    position2: Option<Coordinates>,
+}
+
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct TemperatureType {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    number: Option<NumberInRect>,
+    minus_image_index: u32,
+    suffix_image_index: u32,
+}
+
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Temperature {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    current: Option<TemperatureType>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Weather {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    icon: Option<Icon>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<Temperature>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Other {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    animation: Option<Animation>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct BatteryText {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    number: Option<NumberInRect>,
+    #[serde(skip_serializing_if = "is_zero")]
+    prefix_image_index: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    suffix_image_index: u32,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Linear {
+    start_image_index: u32,
+    segments: Vec<Coordinates>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Battery {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    battery_text: Option<BatteryText>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    linear: Option<Linear>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Animation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    animation_images: Option<ImageRange>,
+    speed: u32,
+    repeat_count: u32,
+    unknown_v4: u32,
+}
+
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+enum Alignment {
+	Left = 2,
+	Right = 4,
+	HCenter = 8,
+	Top = 16,
+	Bottom = 32,
+	VCenter = 64,
+	TopLeft = 18,
+	BottomLeft = 34,
+	CenterLeft = 66,
+	TopRight = 20,
+	BottomRight = 36,
+	CenterRight = 68,
+	TopCenter = 24,
+	BottomCenter = 40,
+    #[default]
+	Center = 72,
+}
+
+impl TryFrom<usize> for Alignment {
+    type Error = ();
+
+    fn try_from(v: usize) -> Result<Self, Self::Error> {
+        match v {
+            x if x == Alignment::Left as usize => Ok(Alignment::Left),
+            x if x == Alignment::Right as usize => Ok(Alignment::Right),
+            x if x == Alignment::HCenter as usize => Ok(Alignment::HCenter),
+            x if x == Alignment::Top as usize => Ok(Alignment::Top),
+            x if x == Alignment::Bottom as usize => Ok(Alignment::Bottom),
+            x if x == Alignment::VCenter as usize => Ok(Alignment::VCenter),
+            x if x == Alignment::TopLeft as usize => Ok(Alignment::TopLeft),
+            x if x == Alignment::BottomLeft as usize => Ok(Alignment::BottomLeft),
+            x if x == Alignment::CenterLeft as usize => Ok(Alignment::CenterLeft),
+            x if x == Alignment::TopRight as usize => Ok(Alignment::TopRight),
+            x if x == Alignment::BottomRight as usize => Ok(Alignment::BottomRight),
+            x if x == Alignment::CenterRight as usize => Ok(Alignment::CenterRight),
+            x if x == Alignment::TopCenter as usize => Ok(Alignment::TopCenter),
+            x if x == Alignment::BottomCenter as usize => Ok(Alignment::BottomCenter),
+            x if x == Alignment::Center as usize => Ok(Alignment::Center),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct NumberInRect {
+    top_left_x: u32,
+    top_left_y: u32,
+    bottom_right_x: u32,
+    bottom_right_y: u32,
+    alignment: Alignment,
+    spacing_x: u32,
+    spacing_y: u32,
+    image_index: u32,
+    images_count: u32
+}
+
+/// This is only used for serialize
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_zero(num: &u32) -> bool {
+    *num == 0
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Steps {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    number: Option<NumberInRect>,
+    #[serde(skip_serializing_if = "is_zero")]
+    prefix_image_index: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    suffix_image_index: u32,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Calories {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    number: Option<NumberInRect>,
+    #[serde(skip_serializing_if = "is_zero")]
+    suffix_image_index: u32,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Pulse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    number: Option<NumberInRect>,
+    #[serde(skip_serializing_if = "is_zero")]
+    prefix_image_index: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    no_data_image_index: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    suffix_image_index: u32,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Distance {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    number: Option<NumberInRect>,
+    km_suffix_image_index: u32,
+    decimal_point_image_index: u32,
+    miles_suffix_image_index: u32,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Activity {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    steps: Option<Steps>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    calories: Option<Calories>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pulse: Option<Pulse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    distance: Option<Distance>,
+    unknown_v7: i32,
 }
 
 pub type Params = HashMap<u8, Vec<Param>>;
@@ -87,6 +355,16 @@ pub struct MiBandParams {
     background: Option<Background>,
     #[serde(skip_serializing_if = "Option::is_none")]
     time: Option<Time>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    activity: Option<Activity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    date: Option<Date>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    weather: Option<Weather>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    battery: Option<Battery>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    other: Option<Other>,
 }
 
 fn parse_image_ref(param: &Param) -> ImageReference {
@@ -116,7 +394,7 @@ fn parse_image_ref(param: &Param) -> ImageReference {
     image_ref
 }
 
-fn parse_image_range(param: &Param) -> ImageRange {
+fn parse_image_range(param: &Param) -> Option<ImageRange> {
     let mut image_range = ImageRange {
         ..Default::default()
     };
@@ -143,11 +421,121 @@ fn parse_image_range(param: &Param) -> ImageRange {
             _ => (),
         }
     }
-    image_range
+    Some(image_range)
 }
 
+fn parse_number_in_rect(param: &Param) -> Option<NumberInRect> {
+    let mut number_in_rect = NumberInRect {
+        ..Default::default()
+    };
+
+    let subvalue = match param {
+        Param::Child(child) => child,
+        _ => panic!("First param should be child param"),
+    };
+
+    for (key, value) in subvalue.into_iter() {
+        match key {
+            1 => {
+                number_in_rect.top_left_x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            2 => {
+                number_in_rect.top_left_y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            3 => {
+                number_in_rect.bottom_right_x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            4 => {
+                number_in_rect.bottom_right_y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            5 => {
+                number_in_rect.alignment = match bytes_param_to_usize(value.get(0).unwrap()).try_into() {
+                    Ok(v) => v,
+                    Err(_) => panic!("Wrong aligment"),
+                };
+            }
+            6 => {
+                number_in_rect.spacing_x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            7 => {
+                number_in_rect.spacing_y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            8 => {
+                number_in_rect.image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            9 => {
+                number_in_rect.images_count = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            _ => (),
+        }
+    }
+    Some(number_in_rect)
+}
+
+fn parse_bool(param: &Param) -> Option<bool>
+{
+    let subvalue = match param {
+        Param::Bytes(bytes) => bytes,
+        _ => panic!("First param should be bytes param"),
+    };
+
+    Some(*subvalue.get(0).unwrap() != 0)
+}
+
+fn parse_coordinates(param: &Param) -> Option<Coordinates> {
+    let mut coordinates = Coordinates {
+        ..Default::default()
+    };
+
+    let subvalue = match param {
+        Param::Child(child) => child,
+        _ => panic!("First param should be child param"),
+    };
+
+    for (key, value) in subvalue.into_iter() {
+        match key {
+            1 => {
+                coordinates.x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            2 => {
+                coordinates.y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            _ => (),
+        }
+    }
+    Some(coordinates)
+}
+
+fn parse_temperature_type(param: &Param) -> Option<TemperatureType> {
+    let mut temperature_type = TemperatureType {
+        ..Default::default()
+    };
+
+    let subvalue = match param {
+        Param::Child(child) => child,
+        _ => panic!("First param should be child param"),
+    };
+
+    for (key, value) in subvalue.into_iter() {
+        match key {
+            1 => {
+                temperature_type.number = parse_number_in_rect(value.get(0).unwrap());
+            }
+            2 => {
+                temperature_type.minus_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            3 => {
+                temperature_type.suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+            }
+            _ => (),
+        }
+    }
+    Some(temperature_type)
+}
+
+
 impl MiBandParams {
-    fn parse_background(params: Params) -> Background {
+    fn parse_background(params: Params) -> Option<Background> {
         let mut background = Background {
             ..Default::default()
         };
@@ -155,28 +543,474 @@ impl MiBandParams {
         for (key, value) in params.into_iter() {
             match key {
                 1 => {
-                    background.image = parse_image_ref(value.get(0).unwrap());
+                    background.image = Some(parse_image_ref(value.get(0).unwrap()));
+                }
+                3 => {
+                    background.preview_en = Some(parse_image_ref(value.get(0).unwrap()));
+                }
+                4 => {
+                    background.preview_cn = Some(parse_image_ref(value.get(0).unwrap()));
+                }
+                5 => {
+                    background.preview_cn2 = Some(parse_image_ref(value.get(0).unwrap()));
                 }
                 _ => (),
             }
         }
-        background
+        Some(background)
     }
 
-    fn parse_time(params: Params) -> Time {
+    fn parse_time(params: Params) -> Option<Time> {
         let mut time = Time {
             ..Default::default()
         };
 
         for (key, value) in params.into_iter() {
             match key {
+                1 => {
+                    time.hours = Self::parse_time_numbers(value.get(0).unwrap());
+                }
                 2 => {
                     time.minutes = Self::parse_time_numbers(value.get(0).unwrap());
+                }
+                3 => {
+                    time.seconds = Self::parse_time_numbers(value.get(0).unwrap());
+                }
+                11 => {
+                    time.drawing_order = parse_bool(value.get(0).unwrap());
                 }
                 _ => (),
             }
         }
-        time
+        Some(time)
+    }
+
+    fn parse_activity(params: Params) -> Option<Activity> {
+        let mut activity = Activity {
+            ..Default::default()
+        };
+
+        for (key, value) in params.into_iter() {
+            match key {
+                1 => {
+                    activity.steps = Self::parse_steps(value.get(0).unwrap());
+                }
+                3 => {
+                    activity.calories = Self::parse_calories(value.get(0).unwrap());
+                }
+                4 => {
+                    activity.pulse = Self::parse_pulse(value.get(0).unwrap());
+                }
+                5 => {
+                    activity.distance = Self::parse_distance(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+       Some(activity)
+    }
+
+    fn parse_date(params: Params) -> Option<Date> {
+        let mut date = Date {
+            ..Default::default()
+        };
+
+        for (key, value) in params.into_iter() {
+            match key {
+                1 => {
+                    date.month_and_day_and_year = Self::parse_month_and_day_and_year(value.get(0).unwrap());
+                }
+                2 => {
+                    date.day_am_pm = Self::parse_day_am_pm(value.get(0).unwrap());
+                }
+                4 => {
+                    date.en_week_days = parse_image_range(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        Some(date)
+    }
+
+    fn parse_weather(params: Params) -> Option<Weather> {
+        let mut weather = Weather {
+            ..Default::default()
+        };
+
+        for (key, value) in params.into_iter() {
+            match key {
+                1 => {
+                    weather.icon = Self::parse_icon(value.get(0).unwrap());
+                }
+                2 => {
+                    weather.temperature = Self::parse_temperature(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        Some(weather)
+    }
+
+    fn parse_battery(params: Params) -> Option<Battery> {
+        let mut battery = Battery {
+            ..Default::default()
+        };
+
+        for (key, value) in params.into_iter() {
+            match key {
+                1 => {
+                    battery.battery_text = Self::parse_battery_text(value.get(0).unwrap());
+                }
+                3 => {
+                    battery.linear = Self::parse_linear(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        Some(battery)
+    }
+
+
+    fn parse_other(params: Params) -> Option<Other> {
+        let mut other = Other {
+            ..Default::default()
+        };
+
+        for (key, value) in params.into_iter() {
+            match key {
+                1 => {
+                    other.animation = Self::parse_animation(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        Some(other)
+    }
+
+    fn parse_steps(param: &Param) -> Option<Steps> {
+        let mut steps = Steps {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    steps.number = parse_number_in_rect(value.get(0).unwrap());
+                }
+                2 => {
+                    steps.prefix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                3 => {
+                    steps.suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                _ => (),
+            }
+        }
+        Some(steps)
+    }
+
+    fn parse_calories(param: &Param) -> Option<Calories> {
+        let mut calories = Calories {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    calories.number = parse_number_in_rect(value.get(0).unwrap());
+                }
+                2 => {
+                    calories.suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                _ => (),
+            }
+        }
+        Some(calories)
+    }
+
+    fn parse_pulse(param: &Param) -> Option<Pulse> {
+        let mut pulse = Pulse {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    pulse.number = parse_number_in_rect(value.get(0).unwrap());
+                }
+                2 => {
+                    pulse.prefix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                3 => {
+                    pulse.no_data_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                4 => {
+                    pulse.suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                _ => (),
+            }
+        }
+        Some(pulse)
+    }
+
+    fn parse_distance(param: &Param) -> Option<Distance> {
+        let mut distance = Distance {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    distance.number = parse_number_in_rect(value.get(0).unwrap());
+                }
+                2 => {
+                    distance.km_suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                3 => {
+                    distance.decimal_point_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                4 => {
+                    distance.miles_suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                _ => (),
+            }
+        }
+        Some(distance)
+    }
+
+    fn parse_separate(param: &Param) -> Option<Separate> {
+        let mut separate = Separate {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    separate.month = parse_number_in_rect(value.get(0).unwrap());
+                }
+                4 => {
+                    separate.day = parse_number_in_rect(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        Some(separate)
+    }
+
+    fn parse_month_and_day_and_year(param: &Param) -> Option<MonthAndDayAndYear> {
+        let mut month_and_day_and_year = MonthAndDayAndYear {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    month_and_day_and_year.separate = Self::parse_separate(value.get(0).unwrap());
+                }
+                4 => {
+                    month_and_day_and_year.two_digits_month = parse_bool(value.get(0).unwrap());
+                }
+                5 => {
+                    month_and_day_and_year.two_digits_day = parse_bool(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        Some(month_and_day_and_year)
+    }
+
+    fn parse_day_am_pm(param: &Param) -> Option<DayAmPm> {
+        let mut day_am_pm = DayAmPm {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    day_am_pm.x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                2 => {
+                    day_am_pm.y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                3 => {
+                    day_am_pm.image_index_amcn = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                4 => {
+                    day_am_pm.image_index_pmcn = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                5 => {
+                    day_am_pm.image_index_amen = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                6 => {
+                    day_am_pm.image_index_pmen = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                _ => (),
+            }
+        }
+        Some(day_am_pm)
+    }
+
+    fn parse_icon(param: &Param) -> Option<Icon> {
+        let mut icon = Icon {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                2 => {
+                    icon.custom_icon = parse_image_range(value.get(0).unwrap());
+                }
+                3 => {
+                    icon.position1 = parse_coordinates(value.get(0).unwrap());
+                }
+                4 => {
+                    icon.position2 = parse_coordinates(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        Some(icon)
+    }
+
+
+    fn parse_segments(params: &Vec<Param>) -> Vec<Coordinates> {
+        let mut result = vec![];
+
+        for param in params {
+            result.push(parse_coordinates(param).unwrap());
+        }
+        result
+    }
+
+
+    fn parse_animation(param: &Param) -> Option<Animation> {
+        let mut animation = Animation {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    animation.animation_images = parse_image_range(value.get(0).unwrap());
+                }
+                2 => {
+                    animation.speed = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                3 => {
+                    animation.repeat_count = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                4 => {
+                    animation.unknown_v4 = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                _ => (),
+            }
+        }
+        Some(animation)
+    }
+
+    fn parse_temperature(param: &Param) -> Option<Temperature> {
+        let mut temperature = Temperature {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    temperature.current = parse_temperature_type(value.get(0).unwrap());
+                }
+                _ => (),
+            }
+        }
+        Some(temperature)
+    }
+
+    fn parse_linear(param: &Param) -> Option<Linear> {
+        let mut linear = Linear {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    linear.start_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                2 => {
+                    linear.segments = Self::parse_segments(value);
+                }
+                _ => (),
+            }
+        }
+        Some(linear)
+    }
+
+    fn parse_battery_text(param: &Param) -> Option<BatteryText> {
+        let mut battery_text = BatteryText {
+            ..Default::default()
+        };
+        let subvalue = match param {
+            Param::Child(child) => child,
+            _ => panic!("First param should be child param"),
+        };
+
+        for (key, value) in subvalue.into_iter() {
+            match key {
+                1 => {
+                    battery_text.number = parse_number_in_rect(value.get(0).unwrap());
+                }
+                3 => {
+                    battery_text.prefix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                4 => {
+                    battery_text.suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                }
+                _ => (),
+            }
+        }
+        Some(battery_text)
     }
 
     fn parse_time_numbers(param: &Param) -> Option<TimeNumbers> {
@@ -191,10 +1025,10 @@ impl MiBandParams {
         for (key, value) in subvalue.into_iter() {
             match key {
                 1 => {
-                    numbers.tens = Some(parse_image_range(value.get(0).unwrap()));
+                    numbers.tens = parse_image_range(value.get(0).unwrap());
                 }
                 2 => {
-                    numbers.ones = Some(parse_image_range(value.get(0).unwrap()));
+                    numbers.ones = parse_image_range(value.get(0).unwrap());
                 }
                 _ => (),
             }
@@ -213,10 +1047,25 @@ impl WatchfaceParams for MiBandParams {
     fn append(&mut self, key: u8, params: Params) {
         match key {
             2 => {
-                self.background = Some(Self::parse_background(params));
+                self.background = Self::parse_background(params);
             }
             3 => {
-                self.time = Some(Self::parse_time(params));
+                self.time = Self::parse_time(params);
+            }
+            4 => {
+                self.activity = Self::parse_activity(params);
+            }
+            5 => {
+                self.date = Self::parse_date(params);
+            }
+            6 => {
+                self.weather = Self::parse_weather(params);
+            }
+            9 => {
+                self.battery = Self::parse_battery(params);
+            }
+            11 => {
+                self.other = Self::parse_other(params);
             }
             _ => (),
         }
@@ -602,11 +1451,12 @@ mod tests {
             Watchface {
                 parameters: MiBandParams {
                     background: Some(Background {
-                        image: ImageReference {
+                        image: Some(ImageReference {
                             x: 1,
                             y: 258,
                             image_index: 0,
-                        }
+                        }),
+                        ..Default::default()
                     }),
                     time: Some(Time {
                         minutes: Some(TimeNumbers {
