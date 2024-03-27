@@ -1,6 +1,5 @@
-use serde::{Deserialize, Serialize};
-
 use {
+    serde::{Deserialize, Serialize},
     std::{
         collections::{hash_map::Entry, HashMap},
         fmt::Debug,
@@ -139,7 +138,6 @@ struct Icon {
     position2: Option<Coordinates>,
 }
 
-
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct TemperatureType {
@@ -148,7 +146,6 @@ struct TemperatureType {
     minus_image_index: u32,
     suffix_image_index: u32,
 }
-
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -210,26 +207,25 @@ struct Animation {
     unknown_v4: u32,
 }
 
-
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 enum Alignment {
-	Left = 2,
-	Right = 4,
-	HCenter = 8,
-	Top = 16,
-	Bottom = 32,
-	VCenter = 64,
-	TopLeft = 18,
-	BottomLeft = 34,
-	CenterLeft = 66,
-	TopRight = 20,
-	BottomRight = 36,
-	CenterRight = 68,
-	TopCenter = 24,
-	BottomCenter = 40,
+    Left = 2,
+    Right = 4,
+    HCenter = 8,
+    Top = 16,
+    Bottom = 32,
+    VCenter = 64,
+    TopLeft = 18,
+    BottomLeft = 34,
+    CenterLeft = 66,
+    TopRight = 20,
+    BottomRight = 36,
+    CenterRight = 68,
+    TopCenter = 24,
+    BottomCenter = 40,
     #[default]
-	Center = 72,
+    Center = 72,
 }
 
 impl TryFrom<usize> for Alignment {
@@ -268,7 +264,7 @@ struct NumberInRect {
     spacing_x: u32,
     spacing_y: u32,
     image_index: u32,
-    images_count: u32
+    images_count: u32,
 }
 
 /// This is only used for serialize
@@ -338,7 +334,7 @@ pub type Params = HashMap<u8, Vec<Param>>;
 
 #[derive(Debug, PartialEq)]
 pub enum Param {
-    Bytes(Vec<u8>),
+    Number(i64),
     Float(f32),
     Child(Params),
 }
@@ -380,13 +376,13 @@ fn parse_image_ref(param: &Param) -> ImageReference {
     for (key, value) in subvalue.into_iter() {
         match key {
             1 => {
-                image_ref.x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                image_ref.x = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             2 => {
-                image_ref.y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                image_ref.y = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             3 => {
-                image_ref.image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                image_ref.image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             _ => (),
         }
@@ -407,16 +403,16 @@ fn parse_image_range(param: &Param) -> Option<ImageRange> {
     for (key, value) in subvalue.into_iter() {
         match key {
             1 => {
-                image_range.x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                image_range.x = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             2 => {
-                image_range.y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                image_range.y = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             3 => {
-                image_range.image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                image_range.image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             4 => {
-                image_range.images_count = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                image_range.images_count = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             _ => (),
         }
@@ -437,34 +433,35 @@ fn parse_number_in_rect(param: &Param) -> Option<NumberInRect> {
     for (key, value) in subvalue.into_iter() {
         match key {
             1 => {
-                number_in_rect.top_left_x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.top_left_x = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             2 => {
-                number_in_rect.top_left_y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.top_left_y = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             3 => {
-                number_in_rect.bottom_right_x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.bottom_right_x = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             4 => {
-                number_in_rect.bottom_right_y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.bottom_right_y = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             5 => {
-                number_in_rect.alignment = match bytes_param_to_usize(value.get(0).unwrap()).try_into() {
-                    Ok(v) => v,
-                    Err(_) => panic!("Wrong aligment"),
-                };
+                number_in_rect.alignment =
+                    match number_param_to_usize(value.get(0).unwrap()).try_into() {
+                        Ok(v) => v,
+                        Err(_) => panic!("Wrong aligment"),
+                    };
             }
             6 => {
-                number_in_rect.spacing_x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.spacing_x = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             7 => {
-                number_in_rect.spacing_y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.spacing_y = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             8 => {
-                number_in_rect.image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             9 => {
-                number_in_rect.images_count = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                number_in_rect.images_count = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             _ => (),
         }
@@ -472,14 +469,13 @@ fn parse_number_in_rect(param: &Param) -> Option<NumberInRect> {
     Some(number_in_rect)
 }
 
-fn parse_bool(param: &Param) -> Option<bool>
-{
+fn parse_bool(param: &Param) -> Option<bool> {
     let subvalue = match param {
-        Param::Bytes(bytes) => bytes,
+        Param::Number(number) => number,
         _ => panic!("First param should be bytes param"),
     };
 
-    Some(*subvalue.get(0).unwrap() != 0)
+    Some(*subvalue != 0)
 }
 
 fn parse_coordinates(param: &Param) -> Option<Coordinates> {
@@ -495,10 +491,10 @@ fn parse_coordinates(param: &Param) -> Option<Coordinates> {
     for (key, value) in subvalue.into_iter() {
         match key {
             1 => {
-                coordinates.x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                coordinates.x = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             2 => {
-                coordinates.y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                coordinates.y = number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             _ => (),
         }
@@ -522,17 +518,18 @@ fn parse_temperature_type(param: &Param) -> Option<TemperatureType> {
                 temperature_type.number = parse_number_in_rect(value.get(0).unwrap());
             }
             2 => {
-                temperature_type.minus_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                temperature_type.minus_image_index =
+                    number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             3 => {
-                temperature_type.suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                temperature_type.suffix_image_index =
+                    number_param_to_usize(value.get(0).unwrap()) as u32;
             }
             _ => (),
         }
     }
     Some(temperature_type)
 }
-
 
 impl MiBandParams {
     fn parse_background(params: Params) -> Option<Background> {
@@ -607,7 +604,7 @@ impl MiBandParams {
                 _ => (),
             }
         }
-       Some(activity)
+        Some(activity)
     }
 
     fn parse_date(params: Params) -> Option<Date> {
@@ -618,7 +615,8 @@ impl MiBandParams {
         for (key, value) in params.into_iter() {
             match key {
                 1 => {
-                    date.month_and_day_and_year = Self::parse_month_and_day_and_year(value.get(0).unwrap());
+                    date.month_and_day_and_year =
+                        Self::parse_month_and_day_and_year(value.get(0).unwrap());
                 }
                 2 => {
                     date.day_am_pm = Self::parse_day_am_pm(value.get(0).unwrap());
@@ -670,7 +668,6 @@ impl MiBandParams {
         Some(battery)
     }
 
-
     fn parse_other(params: Params) -> Option<Other> {
         let mut other = Other {
             ..Default::default()
@@ -702,10 +699,10 @@ impl MiBandParams {
                     steps.number = parse_number_in_rect(value.get(0).unwrap());
                 }
                 2 => {
-                    steps.prefix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    steps.prefix_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 3 => {
-                    steps.suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    steps.suffix_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 _ => (),
             }
@@ -728,7 +725,8 @@ impl MiBandParams {
                     calories.number = parse_number_in_rect(value.get(0).unwrap());
                 }
                 2 => {
-                    calories.suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    calories.suffix_image_index =
+                        number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 _ => (),
             }
@@ -751,13 +749,13 @@ impl MiBandParams {
                     pulse.number = parse_number_in_rect(value.get(0).unwrap());
                 }
                 2 => {
-                    pulse.prefix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    pulse.prefix_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 3 => {
-                    pulse.no_data_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    pulse.no_data_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 4 => {
-                    pulse.suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    pulse.suffix_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 _ => (),
             }
@@ -780,13 +778,16 @@ impl MiBandParams {
                     distance.number = parse_number_in_rect(value.get(0).unwrap());
                 }
                 2 => {
-                    distance.km_suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    distance.km_suffix_image_index =
+                        number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 3 => {
-                    distance.decimal_point_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    distance.decimal_point_image_index =
+                        number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 4 => {
-                    distance.miles_suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    distance.miles_suffix_image_index =
+                        number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 _ => (),
             }
@@ -855,22 +856,26 @@ impl MiBandParams {
         for (key, value) in subvalue.into_iter() {
             match key {
                 1 => {
-                    day_am_pm.x = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    day_am_pm.x = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 2 => {
-                    day_am_pm.y = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    day_am_pm.y = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 3 => {
-                    day_am_pm.image_index_amcn = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    day_am_pm.image_index_amcn =
+                        number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 4 => {
-                    day_am_pm.image_index_pmcn = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    day_am_pm.image_index_pmcn =
+                        number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 5 => {
-                    day_am_pm.image_index_amen = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    day_am_pm.image_index_amen =
+                        number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 6 => {
-                    day_am_pm.image_index_pmen = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    day_am_pm.image_index_pmen =
+                        number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 _ => (),
             }
@@ -904,7 +909,6 @@ impl MiBandParams {
         Some(icon)
     }
 
-
     fn parse_segments(params: &Vec<Param>) -> Vec<Coordinates> {
         let mut result = vec![];
 
@@ -913,7 +917,6 @@ impl MiBandParams {
         }
         result
     }
-
 
     fn parse_animation(param: &Param) -> Option<Animation> {
         let mut animation = Animation {
@@ -930,13 +933,13 @@ impl MiBandParams {
                     animation.animation_images = parse_image_range(value.get(0).unwrap());
                 }
                 2 => {
-                    animation.speed = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    animation.speed = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 3 => {
-                    animation.repeat_count = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    animation.repeat_count = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 4 => {
-                    animation.unknown_v4 = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    animation.unknown_v4 = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 _ => (),
             }
@@ -976,7 +979,7 @@ impl MiBandParams {
         for (key, value) in subvalue.into_iter() {
             match key {
                 1 => {
-                    linear.start_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    linear.start_image_index = number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 2 => {
                     linear.segments = Self::parse_segments(value);
@@ -1002,10 +1005,12 @@ impl MiBandParams {
                     battery_text.number = parse_number_in_rect(value.get(0).unwrap());
                 }
                 3 => {
-                    battery_text.prefix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    battery_text.prefix_image_index =
+                        number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 4 => {
-                    battery_text.suffix_image_index = bytes_param_to_usize(value.get(0).unwrap()) as u32;
+                    battery_text.suffix_image_index =
+                        number_param_to_usize(value.get(0).unwrap()) as u32;
                 }
                 _ => (),
             }
@@ -1127,13 +1132,12 @@ fn param_parser(i: &mut Stream) -> PResult<(u8, Param)> {
         value = Param::Float(le_f32.parse_next(i)?);
     } else {
         // variable width value
-        let (temp_field_value, value_size) = variable_width_value_parser(i)?;
-        let field_value = temp_field_value.to_le_bytes()[0..value_size].to_vec();
+        let (field_value, value_size) = variable_width_value_parser(i)?;
 
         if has_child {
             // When node has Child, field value is size of Child
 
-            let child_size = bytes_to_usize(&field_value);
+            let child_size = field_value as usize;
             if child_size <= 0 {
                 panic!("Child size of 0 or less");
             }
@@ -1141,7 +1145,7 @@ fn param_parser(i: &mut Stream) -> PResult<(u8, Param)> {
             let child = params_parser(i, child_size)?;
             value = Param::Child(child);
         } else {
-            value = Param::Bytes(field_value);
+            value = Param::Number(field_value);
         }
     }
     Ok((key, value))
@@ -1185,25 +1189,34 @@ fn image_parse(i: &mut Stream) -> PResult<Image> {
         panic!("Row size is not as expected (Padding ?)")
     }
 
-    let palette_size = 0;
-    // let palette = [];
+    let mut palette_size = 0;
+    let mut palette = vec![];
 
     if palette_colors_count > 0 {
         // Read palette
-        todo!();
-        // for (let i = 0; i < palette_colors_count; i++) {
-        // 	const color = {
-        // 		red: dataView.getUint8(HEADER_SIZE + i * 4),
-        // 		green: dataView.getUint8(HEADER_SIZE + i * 4 + 1),
-        // 		blue: dataView.getUint8(HEADER_SIZE + i * 4 + 2),
-        // 		alpha: i === transparentPaletteColor - 1 ? 0xFF : 0x00
-        // 	}
-        // 	palette.push(color)
-        // }
+        for color_number in 0..palette_colors_count {
+            let color = (
+                u8.parse_next(i)?,
+                u8.parse_next(i)?,
+                u8.parse_next(i)?,
+                if (transparent_palette_color != 0) && (color_number == transparent_palette_color - 1) {
+                    0xFF
+                } else {
+                    0x00
+                },
+            );
+            u8.parse_next(i)?;
+            palette.push(color);
+        }
 
-        // 	palette_size = paletteColorsCount * 4
+        palette_size = palette_colors_count * 4;
     }
 
+    dbg!(&palette);
+    dbg!(palette_size);
+
+    let mut prev_byte = -1;
+    let mut val = 0;
     // Read pixel data
     let mut pixels = vec![0; 4usize * width as usize * height as usize];
     for y in 0..height {
@@ -1214,22 +1227,25 @@ fn image_parse(i: &mut Stream) -> PResult<Image> {
             let blue;
             let mut alpha = 0x00;
             if palette_colors_count != 0 {
-                todo!();
-            // let colorId
-            // if (bits_per_pixel < 8) {
-            // 	const pixelsPerByte = 8 / bits_per_pixel
-            // 	const byte = dataView.getUint8(HEADER_SIZE + paletteSize + (y * row_size) + Math.floor(x / pixelsPerByte))
-            // 	const bitMask = (1 << bits_per_pixel) - 1
-            // 	const bitPosition = 8 - ((x % pixelsPerByte) + 1) * bits_per_pixel
-            // 	colorId = (byte >> bitPosition) & bitMask;
-            // } else {
-            // 	colorId = dataView.getUint8(HEADER_SIZE + paletteSize + (y * row_size) + x)
-            // }
-            // const color = palette[colorId]
-            // red = color.red
-            // green = color.green
-            // blue = color.blue
-            // alpha = color.alpha
+                let color_id;
+                if bits_per_pixel < 8 {
+                    let pixels_per_byte = 8 / bits_per_pixel;
+
+                    let new_byte = ((x / pixels_per_byte) as f32).floor() as i32;
+                    let byte = if new_byte > prev_byte {
+                        prev_byte = new_byte;
+                        val = u8.parse_next(i)?;
+                        val
+                    } else {
+                        val
+                    };
+                    let bit_mask = (1 << bits_per_pixel) - 1;
+                    let bit_position = 8 - ((x % pixels_per_byte) + 1) * bits_per_pixel;
+                    color_id = (byte >> bit_position) & bit_mask;
+                } else {
+                    color_id = u8.parse_next(i)?;
+                }
+                (red, green, blue, alpha) = palette[color_id as usize];
             } else {
                 let byte_per_pixel = bits_per_pixel / 8;
 
@@ -1321,9 +1337,9 @@ fn bytes_to_usize(bytes: &[u8]) -> usize {
     usize::from_le_bytes(bytes)
 }
 
-fn bytes_param_to_usize(param: &Param) -> usize {
-    if let Param::Bytes(bytes) = param {
-        bytes_to_usize(bytes)
+fn number_param_to_usize(param: &Param) -> usize {
+    if let Param::Number(number) = param {
+        *number as usize
     } else {
         unreachable!();
     }
@@ -1344,25 +1360,18 @@ fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchface<T>
         _ => panic!("First param should be child param"),
     };
 
-    let parameters_size = bytes_param_to_usize(&first_parameter.get(&1).unwrap()[0]);
-
-    let images_count = match &first_parameter.get(&2).unwrap()[0] {
-        Bytes(bytes) => {
-            let zeros = (0..(size_of::<usize>() - bytes.len()))
-                .map(|_| 0u8)
-                .collect::<Vec<_>>();
-            let bytes = [bytes.clone(), zeros].concat();
-            let bytes = bytes[0..size_of::<usize>()].try_into().unwrap();
-            usize::from_le_bytes(bytes)
-        }
-        _ => panic!("First param is other params size, it should be int"),
-    };
+    let parameters_size = number_param_to_usize(&first_parameter.get(&1).unwrap()[0]);
+    let images_count = number_param_to_usize(&first_parameter.get(&2).unwrap()[0]);
 
     let mut parameters = T::new();
 
     let params_start = i.checkpoint();
 
-    for (key, value) in parameter_info.iter() {
+    // TODO: remove sort, it is needed only for debuging and comparing to watchface-js
+    let mut keys = parameter_info.keys().into_iter().collect::<Vec<_>>();
+    keys.sort();
+    for key in keys {
+        let value = parameter_info.get(key).unwrap();
         if *key == 1 {
             continue;
         }
@@ -1374,8 +1383,8 @@ fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchface<T>
             _ => panic!("First param should be child param"),
         };
 
-        let offset = bytes_param_to_usize(&subvalue.get(&1).unwrap()[0]);
-        let size = bytes_param_to_usize(&subvalue.get(&2).unwrap()[0]);
+        let offset = number_param_to_usize(&subvalue.get(&1).unwrap()[0]);
+        let size = number_param_to_usize(&subvalue.get(&2).unwrap()[0]);
 
         i.next_slice(offset);
         let params = params_parser(&mut i, size)?;
@@ -1507,8 +1516,8 @@ mod tests {
             assert_eq!(
                 result,
                 Params::from(HashMap::from([
-                    (1, vec![Param::Bytes(vec![0x04])]),
-                    (2, vec![Param::Bytes(vec![0x6B])]),
+                    (1, vec![Param::Number(0x04)]),
+                    (2, vec![Param::Number(0x6B)]),
                 ]))
             )
         }
@@ -1526,8 +1535,8 @@ mod tests {
                 Params::from(HashMap::from([(
                     1,
                     vec![Param::Child(Params::from(HashMap::from([
-                        (1, vec![Param::Bytes(vec![0x3C, 0x02])]),
-                        (2, vec![Param::Bytes(vec![0x6B])]),
+                        (1, vec![Param::Number(0x023C)]),
+                        (2, vec![Param::Number(0x6B)]),
                     ])))]
                 ),]))
             )
@@ -1544,8 +1553,8 @@ mod tests {
             assert_eq!(
                 result,
                 Params::from(HashMap::from([
-                    (1, vec![Param::Bytes(vec![0x04]), Param::Bytes(vec![0x7F])]),
-                    (2, vec![Param::Bytes(vec![0x6B])]),
+                    (1, vec![Param::Number(0x04), Param::Number(0x7F)]),
+                    (2, vec![Param::Number(0x6B)]),
                 ]))
             )
         }
@@ -1560,7 +1569,7 @@ mod tests {
         if let Ok(result) = result {
             assert_eq!(
                 result,
-                Params::from(HashMap::from([(32, vec![Param::Bytes(vec![0x04])]),]))
+                Params::from(HashMap::from([(32, vec![Param::Number(0x04)]),]))
             )
         }
     }
@@ -1643,7 +1652,6 @@ mod tests {
         let result = variable_width_value_parser(&mut Located::new(&bytes));
         assert!(result.is_ok());
         if let Ok((value, value_size)) = result {
-            dbg!((value as i32, value_size));
             assert_eq!((value as i32, value_size), (1073741824, 5),)
         }
     }
