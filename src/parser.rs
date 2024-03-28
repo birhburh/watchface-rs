@@ -34,7 +34,7 @@ pub fn write_variable_width_value(value: i64) -> Vec<u8> {
         // Read lower 7 bits of value
         let byte = (value_big_int & 0x7F) as u8;
 
-        value_big_int = value_big_int >> 7;
+        value_big_int >>= 7;
 
         // If no data left after this byte, we can stop
         if value_big_int == 0 {
@@ -74,8 +74,8 @@ pub fn image_parse(i: &mut Stream) -> PResult<Image> {
 
     if !([16, 24, 32].contains(&bits_per_pixel)
         && palette_colors_count == 0
-        && [0x08, 0x13, 0x1B, 0x1C, 0x10, 0x09].contains(&pixel_format))
-        && !([1, 2, 4, 8].contains(&bits_per_pixel)
+        && [0x08, 0x13, 0x1B, 0x1C, 0x10, 0x09].contains(&pixel_format)
+        || [1, 2, 4, 8].contains(&bits_per_pixel)
             && palette_colors_count > 0
             && pixel_format == 0x64)
     {
@@ -191,8 +191,7 @@ pub fn image_parse(i: &mut Stream) -> PResult<Image> {
         height,
         bits_per_pixel,
         pixel_format,
-        pixels,
-        ..Default::default()
+        pixels
     })
 }
 
@@ -241,9 +240,6 @@ pub fn param_parser(i: &mut Stream) -> PResult<(u8, Param)> {
             // When node has Child, field value is size of Child
 
             let child_size = field_value as usize;
-            if child_size <= 0 {
-                panic!("Child size of 0 or less");
-            }
             // Recursive call to read Child data
             let child = params_parser(i, child_size)?;
             value = Param::Child(child);
@@ -278,18 +274,16 @@ pub fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchfac
         _ => panic!("First param should be child param"),
     };
 
-    let parameters_size = number_param_to_usize(&first_parameter.get(&1).unwrap()[0]);
-    let images_count = number_param_to_usize(&first_parameter.get(&2).unwrap()[0]);
+    let mut parameters_size: usize = 0;
+    parameters_size.transform(1, first_parameter.get(&1).unwrap());
+    let mut images_count: usize = 0;
+    images_count.transform(2, first_parameter.get(&2).unwrap());
 
     let mut parameters = T::new();
 
     let params_start = i.checkpoint();
 
-    // TODO: remove sort, it is needed only for debuging and comparing to watchface-js
-    let mut keys = parameter_info.keys().into_iter().collect::<Vec<_>>();
-    keys.sort();
-    for key in keys {
-        let value = parameter_info.get(key).unwrap();
+    for (key, value) in parameter_info.iter() {
         if *key == 1 {
             continue;
         }
@@ -301,8 +295,10 @@ pub fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchfac
             _ => panic!("First param should be child param"), // TODO: use adequate messages in all panics
         };
 
-        let offset = number_param_to_usize(&subvalue.get(&1).unwrap()[0]);
-        let size = number_param_to_usize(&subvalue.get(&2).unwrap()[0]);
+        let mut offset: usize = 0;
+        offset.transform(1, subvalue.get(&1).unwrap());
+        let mut size: usize = 0;
+        size.transform(2, subvalue.get(&2).unwrap());
 
         i.next_slice(offset);
         let params = params_parser(&mut i, size)?;
@@ -330,4 +326,231 @@ pub fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchfac
     }
 
     Ok(Watchface { parameters, images })
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, std::collections::HashMap};
+
+    #[test]
+    fn parse_keys_and_values() {
+        let bytes: Vec<u8> = vec![0x08, 0x04, 0x10, 0x6B];
+
+        let result = params_parser(&mut Located::new(&bytes), bytes.len());
+        assert!(result.is_ok());
+        if let Ok(result) = result {
+            assert_eq!(
+                result,
+                Params::from(HashMap::from([
+                    (1, vec![Param::Number(0x04)]),
+                    (2, vec![Param::Number(0x6B)]),
+                ]))
+            )
+        }
+    }
+
+    #[test]
+    fn parse_nested_structure() {
+        let bytes: Vec<u8> = vec![0x0A, 0x05, 0x08, 0xBC, 0x04, 0x10, 0x6B];
+
+        let result = params_parser(&mut Located::new(&bytes), bytes.len());
+        assert!(result.is_ok());
+        if let Ok(result) = result {
+            assert_eq!(
+                result,
+                Params::from(HashMap::from([(
+                    1,
+                    vec![Param::Child(Params::from(HashMap::from([
+                        (1, vec![Param::Number(0x023C)]),
+                        (2, vec![Param::Number(0x6B)]),
+                    ])))]
+                ),]))
+            )
+        }
+    }
+
+    #[test]
+    fn parse_lists() {
+        let bytes: Vec<u8> = vec![0x08, 0x04, 0x08, 0x7F, 0x10, 0x6B];
+
+        let result = params_parser(&mut Located::new(&bytes), bytes.len());
+        assert!(result.is_ok());
+        if let Ok(result) = result {
+            assert_eq!(
+                result,
+                Params::from(HashMap::from([
+                    (1, vec![Param::Number(0x04), Param::Number(0x7F)]),
+                    (2, vec![Param::Number(0x6B)]),
+                ]))
+            )
+        }
+    }
+
+    #[test]
+    fn parse_multi_byte_id() {
+        let bytes: Vec<u8> = vec![0x80, 0x02, 0x04];
+
+        let result = params_parser(&mut Located::new(&bytes), bytes.len());
+        assert!(result.is_ok());
+        if let Ok(result) = result {
+            assert_eq!(
+                result,
+                Params::from(HashMap::from([(32, vec![Param::Number(0x04)]),]))
+            )
+        }
+    }
+
+    #[test]
+    fn parse_float_values() {
+        let bytes: Vec<u8> = vec![
+            0x0A, 0x0A, 0x0D, 0x00, 0x00, 0xA0, 0x3F, 0x3D, 0x00, 0x00, 0xB4, 0x43,
+        ];
+
+        let result = params_parser(&mut Located::new(&bytes), bytes.len());
+        assert!(result.is_ok());
+        if let Ok(result) = result {
+            assert_eq!(
+                result,
+                Params::from(HashMap::from([(
+                    1,
+                    vec![Param::Child(Params::from(HashMap::from([
+                        (1, vec![Param::Float(1.25)]),
+                        (7, vec![Param::Float(360.0)])
+                    ])),)]
+                ),]))
+            )
+        }
+    }
+
+    #[test]
+    fn read_single_byte_value() {
+        let bytes: Vec<u8> = vec![0x73];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!((value, value_size), (0x73, 1),)
+        }
+    }
+
+    #[test]
+    fn read_multi_byte_value() {
+        let bytes: Vec<u8> = vec![0xF3, 0x42];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!((value, value_size), (0x2173, 2),)
+        }
+    }
+
+    #[test]
+    fn read_negative_values() {
+        let bytes: Vec<u8> = vec![0xF3, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!((value, value_size), (-13, 10),)
+        }
+    }
+
+    #[test]
+    fn read_32bit_negative_values() {
+        let bytes: Vec<u8> = vec![0xF3, 0xFF, 0xFF, 0xFF, 0x0F];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!(
+                // TODO: implement 32 bit reading because it is needed for UIHH_BIPU_GTS2MINI format
+                // we can live without it for now
+                (value as i32, value_size),
+                (-13, 5),
+            )
+        }
+    }
+
+    #[test]
+    fn read_31_bit_value() {
+        let bytes: Vec<u8> = vec![0x80, 0x80, 0x80, 0x80, 0x04];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!((value as i32, value_size), (1073741824, 5),)
+        }
+    }
+
+    #[test]
+    fn read_32_bit_value() {
+        let bytes: Vec<u8> = vec![0x80, 0x80, 0x80, 0x80, 0x08];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!((value, value_size), (2147483648, 5),)
+        }
+    }
+
+    #[test]
+    fn read_33_bit_value() {
+        let bytes: Vec<u8> = vec![0x80, 0x80, 0x80, 0x80, 0x10];
+
+        let result = variable_width_value_parser(&mut Located::new(&bytes));
+        assert!(result.is_ok());
+        if let Ok((value, value_size)) = result {
+            assert_eq!((value, value_size), (4294967296, 5),)
+        }
+    }
+
+    #[test]
+    fn write_small_value_on_one_byte() {
+        assert_eq!(write_variable_width_value(0x73), vec![0x73],)
+    }
+
+    #[test]
+    fn write_bigger_values_on_multiple_bytes() {
+        assert_eq!(write_variable_width_value(0x2173), vec![0xF3, 0x42],)
+    }
+
+    #[test]
+    fn write_negative_values() {
+        assert_eq!(
+            write_variable_width_value(-13),
+            vec![0xF3, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
+        )
+    }
+
+    // #[test]
+    // fn write_32bit_negative_values () {
+    //     assert_eq!(
+    //         write_variable_width_value(-13, 32),
+    //         vec![0xF3, 0xFF, 0xFF, 0xFF, 0x0F],
+    //     )
+    // }
+
+    #[test]
+    fn write_31_bit_value() {
+        assert_eq!(
+            write_variable_width_value(1073741824),
+            vec![0x80, 0x80, 0x80, 0x80, 0x04],
+        )
+    }
+
+    #[test]
+    fn write_32_bit_value() {
+        assert_eq!(
+            write_variable_width_value(2147483648),
+            vec![0x80, 0x80, 0x80, 0x80, 0x08],
+        )
+    }
+
+    #[test]
+    fn write_33_bit_value() {
+        assert_eq!(
+            write_variable_width_value(4294967296),
+            vec![0x80, 0x80, 0x80, 0x80, 0x10],
+        )
+    }
 }

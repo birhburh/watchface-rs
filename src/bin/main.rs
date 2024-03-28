@@ -21,12 +21,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let res = serde_json::to_string_pretty(&watchface.parameters).unwrap();
 
     // TODO: Probably better to show error to not remove existing, probably modified, extracted watchface folder
-    match fs::create_dir(&output) {
-        Err(e) => match e.kind() {
+    if let Err(e) = fs::create_dir(&output) {
+        match e.kind() {
             ErrorKind::AlreadyExists => (),
             _ => return Err(e.into()),
-        },
-        Ok(_) => (),
+        }
     };
 
     fs::write(format!("{output}/watchface.json"), res).expect("cannot write watchface.json");

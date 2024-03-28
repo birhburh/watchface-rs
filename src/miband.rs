@@ -34,7 +34,7 @@ impl WatchfaceParams for MiBandParams {
 }
 
 impl Transform for MiBandParams {
-    fn transform(&mut self, key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, key: u8, params: &[Param]) {
         match key {
             2 => self.background.transform(key, params),
             3 => self.time.transform(key, params),
@@ -63,7 +63,7 @@ pub struct Background {
 }
 
 impl Transform for Option<Background> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Background {
@@ -79,20 +79,12 @@ impl Transform for Option<Background> {
         };
 
         if let Some(background) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        background.image = parse_image_ref(value.get(0).unwrap());
-                    }
-                    3 => {
-                        background.preview_en = parse_image_ref(value.get(0).unwrap());
-                    }
-                    4 => {
-                        background.preview_cn = parse_image_ref(value.get(0).unwrap());
-                    }
-                    5 => {
-                        background.preview_cn2 = parse_image_ref(value.get(0).unwrap());
-                    }
+                    1 => background.image.transform(*key, value),
+                    3 => background.preview_en.transform(*key, value),
+                    4 => background.preview_cn.transform(*key, value),
+                    5 => background.preview_cn2.transform(*key, value),
                     _ => (),
                 }
             }
@@ -114,7 +106,7 @@ pub struct Time {
 }
 
 impl Transform for Option<Time> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Time {
@@ -130,14 +122,12 @@ impl Transform for Option<Time> {
         };
 
         if let Some(time) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
                     1 => time.hours.transform(*key, value),
                     2 => time.minutes.transform(*key, value),
                     3 => time.seconds.transform(*key, value),
-                    11 => {
-                        time.drawing_order = parse_bool(value.get(0).unwrap());
-                    }
+                    11 => time.drawing_order.transform(*key, value),
                     _ => (),
                 }
             }
@@ -155,7 +145,7 @@ pub struct TimeNumbers {
 }
 
 impl Transform for Option<TimeNumbers> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(TimeNumbers {
@@ -171,14 +161,10 @@ impl Transform for Option<TimeNumbers> {
         };
 
         if let Some(numbers) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        numbers.tens = parse_image_range(value.get(0).unwrap());
-                    }
-                    2 => {
-                        numbers.ones = parse_image_range(value.get(0).unwrap());
-                    }
+                    1 => numbers.tens.transform(*key, value),
+                    2 => numbers.ones.transform(*key, value),
                     _ => (),
                 }
             }
@@ -201,7 +187,7 @@ pub struct Activity {
 }
 
 impl Transform for Option<Activity> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Activity {
@@ -217,7 +203,7 @@ impl Transform for Option<Activity> {
         };
 
         if let Some(activity) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
                     1 => activity.steps.transform(*key, value),
                     3 => activity.calories.transform(*key, value),
@@ -236,13 +222,13 @@ pub struct Steps {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
     #[serde(skip_serializing_if = "is_zero")]
-    pub prefix_image_index: u32,
+    pub prefix_image_index: ImgId,
     #[serde(skip_serializing_if = "is_zero")]
-    pub suffix_image_index: u32,
+    pub suffix_image_index: ImgId,
 }
 
 impl Transform for Option<Steps> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Steps {
@@ -258,19 +244,11 @@ impl Transform for Option<Steps> {
         };
 
         if let Some(steps) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        steps.number = parse_number_in_rect(value.get(0).unwrap());
-                    }
-                    2 => {
-                        steps.prefix_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    3 => {
-                        steps.suffix_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
+                    1 => steps.number.transform(*key, value),
+                    2 => steps.prefix_image_index.transform(*key, value),
+                    3 => steps.suffix_image_index.transform(*key, value),
                     _ => (),
                 }
             }
@@ -284,11 +262,11 @@ pub struct Calories {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
     #[serde(skip_serializing_if = "is_zero")]
-    pub suffix_image_index: u32,
+    pub suffix_image_index: ImgId,
 }
 
 impl Transform for Option<Calories> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Calories {
@@ -304,15 +282,10 @@ impl Transform for Option<Calories> {
         };
 
         if let Some(calories) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        calories.number = parse_number_in_rect(value.get(0).unwrap());
-                    }
-                    2 => {
-                        calories.suffix_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
+                    1 => calories.number.transform(*key, value),
+                    2 => calories.suffix_image_index.transform(*key, value),
                     _ => (),
                 }
             }
@@ -326,15 +299,15 @@ pub struct Pulse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
     #[serde(skip_serializing_if = "is_zero")]
-    pub prefix_image_index: u32,
+    pub prefix_image_index: ImgId,
     #[serde(skip_serializing_if = "is_zero")]
-    pub no_data_image_index: u32,
+    pub no_data_image_index: ImgId,
     #[serde(skip_serializing_if = "is_zero")]
-    pub suffix_image_index: u32,
+    pub suffix_image_index: ImgId,
 }
 
 impl Transform for Option<Pulse> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Pulse {
@@ -350,23 +323,12 @@ impl Transform for Option<Pulse> {
         };
 
         if let Some(pulse) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        pulse.number = parse_number_in_rect(value.get(0).unwrap());
-                    }
-                    2 => {
-                        pulse.prefix_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    3 => {
-                        pulse.no_data_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    4 => {
-                        pulse.suffix_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
+                    1 => pulse.number.transform(*key, value),
+                    2 => pulse.prefix_image_index.transform(*key, value),
+                    3 => pulse.no_data_image_index.transform(*key, value),
+                    4 => pulse.suffix_image_index.transform(*key, value),
                     _ => (),
                 }
             }
@@ -380,15 +342,15 @@ pub struct Distance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
     #[serde(skip_serializing_if = "is_zero")]
-    pub km_suffix_image_index: u32,
+    pub km_suffix_image_index: ImgId,
     #[serde(skip_serializing_if = "is_zero")]
-    pub decimal_point_image_index: u32,
+    pub decimal_point_image_index: ImgId,
     #[serde(skip_serializing_if = "is_zero")]
-    pub miles_suffix_image_index: u32,
+    pub miles_suffix_image_index: ImgId,
 }
 
 impl Transform for Option<Distance> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Distance {
@@ -404,23 +366,12 @@ impl Transform for Option<Distance> {
         };
 
         if let Some(distance) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        distance.number = parse_number_in_rect(value.get(0).unwrap());
-                    }
-                    2 => {
-                        distance.km_suffix_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    3 => {
-                        distance.decimal_point_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    4 => {
-                        distance.miles_suffix_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
+                    1 => distance.number.transform(*key, value),
+                    2 => distance.km_suffix_image_index.transform(*key, value),
+                    3 => distance.decimal_point_image_index.transform(*key, value),
+                    4 => distance.miles_suffix_image_index.transform(*key, value),
                     _ => (),
                 }
             }
@@ -440,7 +391,7 @@ pub struct Date {
 }
 
 impl Transform for Option<Date> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Date {
@@ -456,17 +407,11 @@ impl Transform for Option<Date> {
         };
 
         if let Some(date) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        date.month_and_day_and_year.transform(*key, value);
-                    }
-                    2 => {
-                        date.day_am_pm.transform(*key, value);
-                    }
-                    4 => {
-                        date.en_week_days = parse_image_range(value.get(0).unwrap());
-                    }
+                    1 => date.month_and_day_and_year.transform(*key, value),
+                    2 => date.day_am_pm.transform(*key, value),
+                    4 => date.en_week_days.transform(*key, value),
                     _ => (),
                 }
             }
@@ -486,7 +431,7 @@ pub struct MonthAndDayAndYear {
 }
 
 impl Transform for Option<MonthAndDayAndYear> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(MonthAndDayAndYear {
@@ -502,17 +447,11 @@ impl Transform for Option<MonthAndDayAndYear> {
         };
 
         if let Some(month_and_day_and_year) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        month_and_day_and_year.separate.transform(*key, value);
-                    }
-                    4 => {
-                        month_and_day_and_year.two_digits_month = parse_bool(value.get(0).unwrap());
-                    }
-                    5 => {
-                        month_and_day_and_year.two_digits_day = parse_bool(value.get(0).unwrap());
-                    }
+                    1 => month_and_day_and_year.separate.transform(*key, value),
+                    4 => month_and_day_and_year.two_digits_month.transform(*key, value),
+                    5 => month_and_day_and_year.two_digits_day.transform(*key, value),
                     _ => (),
                 }
             }
@@ -530,7 +469,7 @@ pub struct Separate {
 }
 
 impl Transform for Option<Separate> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Separate {
@@ -546,14 +485,10 @@ impl Transform for Option<Separate> {
         };
 
         if let Some(separate) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        separate.month = parse_number_in_rect(value.get(0).unwrap());
-                    }
-                    4 => {
-                        separate.day = parse_number_in_rect(value.get(0).unwrap());
-                    }
+                    1 => separate.month.transform(*key, value),
+                    4 => separate.day.transform(*key, value),
                     _ => (),
                 }
             }
@@ -566,18 +501,18 @@ impl Transform for Option<Separate> {
 pub struct DayAmPm {
     pub x: i32,
     pub y: i32,
-    #[serde(rename = "ImageIndexAMCN")]
-    pub image_index_amcn: u32,
-    #[serde(rename = "ImageIndexPMCN")]
-    pub image_index_pmcn: u32,
-    #[serde(rename = "ImageIndexAMEN")]
-    pub image_index_amen: u32,
-    #[serde(rename = "ImageIndexPMEN")]
-    pub image_index_pmen: u32,
+    #[serde(rename = "ImageIndexAMCN", skip_serializing_if = "is_zero")]
+    pub image_index_amcn: ImgId,
+    #[serde(rename = "ImageIndexPMCN", skip_serializing_if = "is_zero")]
+    pub image_index_pmcn: ImgId,
+    #[serde(rename = "ImageIndexAMEN", skip_serializing_if = "is_zero")]
+    pub image_index_amen: ImgId,
+    #[serde(rename = "ImageIndexPMEN", skip_serializing_if = "is_zero")]
+    pub image_index_pmen: ImgId,
 }
 
 impl Transform for Option<DayAmPm> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(DayAmPm {
@@ -593,30 +528,14 @@ impl Transform for Option<DayAmPm> {
         };
 
         if let Some(day_am_pm) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        day_am_pm.x = number_param_to_usize(value.get(0).unwrap()) as i32;
-                    }
-                    2 => {
-                        day_am_pm.y = number_param_to_usize(value.get(0).unwrap()) as i32;
-                    }
-                    3 => {
-                        day_am_pm.image_index_amcn =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    4 => {
-                        day_am_pm.image_index_pmcn =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    5 => {
-                        day_am_pm.image_index_amen =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    6 => {
-                        day_am_pm.image_index_pmen =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
+                    1 => day_am_pm.x.transform(*key, value),
+                    2 => day_am_pm.y.transform(*key, value),
+                    3 => day_am_pm.image_index_amcn.transform(*key, value),
+                    4 => day_am_pm.image_index_pmcn.transform(*key, value),
+                    5 => day_am_pm.image_index_amen.transform(*key, value),
+                    6 => day_am_pm.image_index_pmen.transform(*key, value),
                     _ => (),
                 }
             }
@@ -636,7 +555,7 @@ pub struct Status {
 }
 
 impl Transform for Option<Status> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Status {
@@ -652,17 +571,11 @@ impl Transform for Option<Status> {
         };
 
         if let Some(status) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        status.do_not_disturb = parse_status_image(value.get(0).unwrap());
-                    }
-                    2 => {
-                        status.lock = parse_status_image(value.get(0).unwrap());
-                    }
-                    3 => {
-                        status.bluetooth = parse_status_image(value.get(0).unwrap());
-                    }
+                    1 => status.do_not_disturb.transform(*key, value),
+                    2 => status.lock.transform(*key, value),
+                    3 => status.bluetooth.transform(*key, value),
                     _ => (),
                 }
             }
@@ -680,7 +593,7 @@ pub struct Weather {
 }
 
 impl Transform for Option<Weather> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Weather {
@@ -696,7 +609,7 @@ impl Transform for Option<Weather> {
         };
 
         if let Some(weather) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
                     1 => weather.icon.transform(*key, value),
                     2 => weather.temperature.transform(*key, value),
@@ -719,7 +632,7 @@ pub struct Icon {
 }
 
 impl Transform for Option<Icon> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Icon {
@@ -735,17 +648,11 @@ impl Transform for Option<Icon> {
         };
 
         if let Some(icon) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    2 => {
-                        icon.custom_icon = parse_image_range(value.get(0).unwrap());
-                    }
-                    3 => {
-                        icon.position1 = parse_coordinates(value.get(0).unwrap());
-                    }
-                    4 => {
-                        icon.position2 = parse_coordinates(value.get(0).unwrap());
-                    }
+                    2 => icon.custom_icon.transform(*key, value),
+                    3 => icon.position1.transform(*key, value),
+                    4 => icon.position2.transform(*key, value),
                     _ => (),
                 }
             }
@@ -761,7 +668,7 @@ pub struct Temperature {
 }
 
 impl Transform for Option<Temperature> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Temperature {
@@ -777,11 +684,10 @@ impl Transform for Option<Temperature> {
         };
 
         if let Some(temperature) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
+                #[allow(clippy::single_match)]
                 match key {
-                    1 => {
-                        temperature.current = parse_temperature_type(value.get(0).unwrap());
-                    }
+                    1 => temperature.current.transform(*key, value),
                     _ => (),
                 }
             }
@@ -801,7 +707,7 @@ pub struct Battery {
 }
 
 impl Transform for Option<Battery> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Battery {
@@ -817,15 +723,11 @@ impl Transform for Option<Battery> {
         };
 
         if let Some(battery) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
                     1 => battery.battery_text.transform(*key, value),
-                    2 => {
-                        battery.battery_icon = parse_image_range(value.get(0).unwrap());
-                    }
-                    3 => {
-                        battery.linear.transform(*key, value);
-                    }
+                    2 => battery.battery_icon.transform(*key, value),
+                    3 => battery.linear.transform(*key, value),
                     _ => (),
                 }
             }
@@ -839,13 +741,13 @@ pub struct BatteryText {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
     #[serde(skip_serializing_if = "is_zero")]
-    pub prefix_image_index: u32,
+    pub prefix_image_index: ImgId,
     #[serde(skip_serializing_if = "is_zero")]
-    pub suffix_image_index: u32,
+    pub suffix_image_index: ImgId,
 }
 
 impl Transform for Option<BatteryText> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(BatteryText {
@@ -861,19 +763,11 @@ impl Transform for Option<BatteryText> {
         };
 
         if let Some(battery_text) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        battery_text.number = parse_number_in_rect(value.get(0).unwrap());
-                    }
-                    3 => {
-                        battery_text.prefix_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    4 => {
-                        battery_text.suffix_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
+                    1 => battery_text.number.transform(*key, value),
+                    3 => battery_text.prefix_image_index.transform(*key, value),
+                    4 => battery_text.suffix_image_index.transform(*key, value),
                     _ => (),
                 }
             }
@@ -884,12 +778,13 @@ impl Transform for Option<BatteryText> {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Linear {
-    pub start_image_index: u32,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub start_image_index: ImgId,
     pub segments: Segments,
 }
 
 impl Transform for Option<Linear> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Linear {
@@ -905,15 +800,10 @@ impl Transform for Option<Linear> {
         };
 
         if let Some(linear) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        linear.start_image_index =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    2 => {
-                        linear.segments.transform(*key, value);
-                    }
+                    1 => linear.start_image_index.transform(*key, value),
+                    2 => linear.segments.transform(*key, value),
                     _ => (),
                 }
             }
@@ -924,9 +814,12 @@ impl Transform for Option<Linear> {
 type Segments = Vec<Coordinates>;
 
 impl Transform for Segments {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
-        for param in params {
-            self.push(parse_coordinates(param).unwrap());
+    fn transform(&mut self, key: u8, params: &[Param]) {
+        for i in 0..params.len() {
+            let param = &params[i..=i]; // heh
+            let mut coordinates = None;
+            coordinates.transform(key, param);
+            self.push(coordinates.unwrap());
         }
     }
 }
@@ -939,7 +832,7 @@ pub struct Other {
 }
 
 impl Transform for Option<Other> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Other {
@@ -955,7 +848,8 @@ impl Transform for Option<Other> {
         };
 
         if let Some(other) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
+                #[allow(clippy::single_match)]
                 match key {
                     1 => other.animation.transform(*key, value),
                     _ => (),
@@ -976,7 +870,7 @@ pub struct Animation {
 }
 
 impl Transform for Option<Animation> {
-    fn transform(&mut self, _key: u8, params: &Vec<Param>) {
+    fn transform(&mut self, _key: u8, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Animation {
@@ -992,21 +886,12 @@ impl Transform for Option<Animation> {
         };
 
         if let Some(animation) = self {
-            for (key, value) in params.into_iter() {
+            for (key, value) in params.iter() {
                 match key {
-                    1 => {
-                        animation.animation_images = parse_image_range(value.get(0).unwrap());
-                    }
-                    2 => {
-                        animation.speed = number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    3 => {
-                        animation.repeat_count =
-                            number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
-                    4 => {
-                        animation.unknown_v4 = number_param_to_usize(value.get(0).unwrap()) as u32;
-                    }
+                    1 => animation.animation_images.transform(*key, value),
+                    2 => animation.speed.transform(*key, value),
+                    3 => animation.repeat_count.transform(*key, value),
+                    4 => animation.unknown_v4.transform(*key, value),
                     _ => (),
                 }
             }
