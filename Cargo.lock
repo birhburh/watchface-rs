@@ -168,7 +168,17 @@ dependencies = [
  "png",
  "serde",
  "serde_json",
+ "watchface_rs_derive",
  "winnow",
+]
+
+[[package]]
+name = "watchface_rs_derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

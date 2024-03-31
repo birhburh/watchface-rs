@@ -1,6 +1,7 @@
 use {
     serde::{Deserialize, Serialize},
     std::{collections::HashMap, fmt::Debug},
+    watchface_rs_derive::TransformDerive,
 };
 
 pub type Params = HashMap<u8, Vec<Param>>;
@@ -80,199 +81,70 @@ impl Transform for ImgId {
     }
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct ImageReference {
+    #[wfrs_id(1)]
     pub x: i32,
+    #[wfrs_id(2)]
     pub y: i32,
+    #[wfrs_id(3)]
     pub image_index: ImgId,
+    // #[wfrs_id(4)]
+    // pub z: f64,
 }
 
-impl Transform for Option<ImageReference> {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
-        match self {
-            None => {
-                *self = Some(ImageReference {
-                    ..Default::default()
-                });
-            }
-            Some(_) => (),
-        }
-
-        let params = match params.get(0).unwrap() {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        if let Some(image_ref) = self {
-            for (key, value) in params.iter() {
-                match key {
-                    1 => image_ref.x.transform(*key, value),
-                    2 => image_ref.y.transform(*key, value),
-                    3 => image_ref.image_index.transform(*key, value),
-                    _ => (),
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct ImageRange {
+    #[wfrs_id(1)]
     pub x: i32,
+    #[wfrs_id(2)]
     pub y: i32,
+    #[wfrs_id(3)]
     pub image_index: ImgId,
+    #[wfrs_id(4)]
     pub images_count: u32,
 }
 
-impl Transform for Option<ImageRange> {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
-        match self {
-            None => {
-                *self = Some(ImageRange {
-                    ..Default::default()
-                });
-            }
-            Some(_) => (),
-        }
-
-        let params = match params.get(0).unwrap() {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        if let Some(image_range) = self {
-            for (key, value) in params.iter() {
-                match key {
-                    1 => image_range.x.transform(*key, value),
-                    2 => image_range.y.transform(*key, value),
-                    3 => image_range.image_index.transform(*key, value),
-                    4 => image_range.images_count.transform(*key, value),
-                    _ => (),
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct StatusPosition {
+    #[wfrs_id(1)]
     pub x: i32,
+    #[wfrs_id(2)]
     pub y: i32,
+    #[wfrs_id(3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
+    #[wfrs_id(4)]
     #[serde(skip_serializing_if = "is_zero")]
     unknown4: u32,
+    #[wfrs_id(5)]
     #[serde(skip_serializing_if = "is_zero")]
     unknown5: u32,
 }
-
-impl Transform for Option<StatusPosition> {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
-        match self {
-            None => {
-                *self = Some(StatusPosition {
-                    ..Default::default()
-                });
-            }
-            Some(_) => (),
-        }
-
-        let params = match params.get(0).unwrap() {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        if let Some(status_position) = self {
-            for (key, value) in params.iter() {
-                match key {
-                    1 => status_position.x.transform(*key, value),
-                    2 => status_position.y.transform(*key, value),
-                    3 => status_position.alignment.transform(*key, value),
-                    4 => status_position.unknown4.transform(*key, value),
-                    5 => status_position.unknown5.transform(*key, value),
-                    _ => (),
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct StatusImage {
+    #[wfrs_id(1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub coordinates: Option<StatusPosition>,
+    #[wfrs_id(2)]
     #[serde(skip_serializing_if = "is_zero")]
     pub on_image_index: ImgId,
+    #[wfrs_id(3)]
     #[serde(skip_serializing_if = "is_zero")]
     pub off_image_index: ImgId,
 }
 
-impl Transform for Option<StatusImage> {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
-        match self {
-            None => {
-                *self = Some(StatusImage {
-                    ..Default::default()
-                });
-            }
-            Some(_) => (),
-        }
-
-        let params = match params.get(0).unwrap() {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        if let Some(status_image) = self {
-            for (key, value) in params.iter() {
-                match key {
-                    1 => status_image.coordinates.transform(*key, value),
-                    2 => status_image.on_image_index.transform(*key, value),
-                    3 => status_image.off_image_index.transform(*key, value),
-                    _ => (),
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Coordinates {
+    #[wfrs_id(1)]
     pub x: i32,
+    #[wfrs_id(2)]
     pub y: i32,
-}
-
-impl Transform for Option<Coordinates> {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
-        match self {
-            None => {
-                *self = Some(Coordinates {
-                    ..Default::default()
-                });
-            }
-            Some(_) => (),
-        }
-
-        let params = match params.get(0).unwrap() {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        if let Some(coordinates) = self {
-            for (key, value) in params.iter() {
-                match key {
-                    1 => coordinates.x.transform(*key, value),
-                    2 => coordinates.y.transform(*key, value),
-                    _ => (),
-                }
-            }
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -361,92 +233,39 @@ impl Transform for Alignment {
     }
 }
 
-
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct NumberInRect {
+    #[wfrs_id(1)]
     pub top_left_x: i32,
+    #[wfrs_id(2)]
     pub top_left_y: i32,
+    #[wfrs_id(3)]
     pub bottom_right_x: i32,
+    #[wfrs_id(4)]
     pub bottom_right_y: i32,
+    #[wfrs_id(5)]
     pub alignment: Alignment,
+    #[wfrs_id(6)]
     pub spacing_x: i32,
+    #[wfrs_id(7)]
     pub spacing_y: i32,
+    #[wfrs_id(8)]
     pub image_index: ImgId,
+    #[wfrs_id(9)]
     pub images_count: u32,
 }
 
-impl Transform for Option<NumberInRect> {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
-        match self {
-            None => {
-                *self = Some(NumberInRect {
-                    ..Default::default()
-                });
-            }
-            Some(_) => (),
-        }
-
-        let params = match params.get(0).unwrap() {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        if let Some(number_in_rect) = self {
-            for (key, value) in params.iter() {
-                match key {
-                    1 => number_in_rect.top_left_x.transform(*key, value),
-                    2 => number_in_rect.top_left_y.transform(*key, value),
-                    3 => number_in_rect.bottom_right_x.transform(*key, value),
-                    4 => number_in_rect.bottom_right_y.transform(*key, value),
-                    5 => number_in_rect.alignment.transform(*key, value),
-                    6 => number_in_rect.spacing_x.transform(*key, value),
-                    7 => number_in_rect.spacing_y.transform(*key, value),
-                    8 => number_in_rect.image_index.transform(*key, value),
-                    9 => number_in_rect.images_count.transform(*key, value),
-                    _ => (),
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct TemperatureType {
+    #[wfrs_id(1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     number: Option<NumberInRect>,
+    #[wfrs_id(2)]
     minus_image_index: ImgId,
+    #[wfrs_id(3)]
     suffix_image_index: ImgId,
-}
-
-impl Transform for Option<TemperatureType> {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
-        match self {
-            None => {
-                *self = Some(TemperatureType {
-                    ..Default::default()
-                });
-            }
-            Some(_) => (),
-        }
-
-        let params = match params.get(0).unwrap() {
-            Param::Child(child) => child,
-            _ => panic!("First param should be child param"),
-        };
-
-        if let Some(temperature_type) = self {
-            for (key, value) in params.iter() {
-                match key {
-                    1 => temperature_type.number.transform(*key, value),
-                    2 => temperature_type.minus_image_index.transform(*key, value),
-                    3 => temperature_type.suffix_image_index.transform(*key, value),
-                    _ => (),
-                }
-            }
-        }
-    }
 }
 
 /// This is only used for serialize

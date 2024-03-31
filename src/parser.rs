@@ -191,7 +191,7 @@ pub fn image_parse(i: &mut Stream) -> PResult<Image> {
         height,
         bits_per_pixel,
         pixel_format,
-        pixels
+        pixels,
     })
 }
 
