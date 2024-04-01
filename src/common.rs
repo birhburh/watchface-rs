@@ -59,6 +59,17 @@ impl Transform for usize {
     }
 }
 
+impl Transform for Option<u32> {
+    fn transform(&mut self, params: &[Param]) {
+        let subvalue = match params.get(0).unwrap() {
+            Param::Number(number) => number,
+            _ => panic!("First param should be number param"),
+        };
+
+        *self = Some(*subvalue as u32);
+    }
+}
+
 impl Transform for Option<bool> {
     fn transform(&mut self, params: &[Param]) {
         let subvalue = match params.get(0).unwrap() {
@@ -70,7 +81,8 @@ impl Transform for Option<bool> {
     }
 }
 
-pub type ImgId = u32;
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct ImgId(u32);
 
 impl Transform for Option<ImgId> {
     fn transform(&mut self, params: &[Param]) {
@@ -79,7 +91,7 @@ impl Transform for Option<ImgId> {
             _ => panic!("First param should be number param"),
         };
 
-        *self = Some(*subvalue as ImgId);
+        *self = Some(ImgId(*subvalue as u32));
     }
 }
 
@@ -149,6 +161,17 @@ pub struct Coordinates {
     pub x: i32,
     #[wfrs_id(2)]
     pub y: i32,
+}
+
+impl Transform for Vec<Coordinates> {
+    fn transform(&mut self, params: &[Param]) {
+        for i in 0..params.len() {
+            let param = &params[i..=i]; // heh
+            let mut coordinates = None;
+            coordinates.transform(param);
+            self.push(coordinates.unwrap());
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Default, Deserialize)]
@@ -340,4 +363,74 @@ pub struct TemperatureType {
     #[wfrs_id(3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     suffix_image_index: Option<ImgId>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
+#[serde(rename_all = "PascalCase")]
+pub struct VectorShape {
+    #[wfrs_id(1)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub only_border: Option<bool>,
+    #[wfrs_id(2)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<Color>,
+    #[wfrs_id(3)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub center: Option<Coordinates>,
+    #[wfrs_id(4)]
+    pub shape: Vec<Coordinates>,
+    #[wfrs_id(5)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub center_image: Option<ImageReference>,
+}
+
+#[derive(Debug, PartialEq, Default, Deserialize)]
+pub struct Color(u8, u8, u8, u8);
+
+impl Transform for Option<Color> {
+    fn transform(&mut self, params: &[Param]) {
+        let subvalue = match params.get(0).unwrap() {
+            Param::Number(number) => number,
+            _ => panic!("First param should be number param"),
+        };
+
+        *self = Some(Color(
+            (*subvalue >> 24) as u8,
+            (*subvalue >> 16) as u8,
+            (*subvalue >> 8) as u8,
+            *subvalue as u8,
+        ));
+    }
+}
+
+impl Serialize for Color {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let vals = [self.0, self.1, self.2, self.3];
+        let mut hex_num = vec![];
+        let mut started = false;
+        let mut first = true;
+
+        for &value in vals.iter() {
+            if !started && value != 0 {
+                started = true;
+            }
+            if started {
+                if first && value <= 16 {
+                    hex_num.push(format!("{:X}", value));
+                } else {
+                    hex_num.push(format!("{:02X}", value));
+                }
+                first = false;
+            }
+        }
+
+        if hex_num.len() == 0 {
+            hex_num.push("0".to_string());
+        }
+
+        serializer.serialize_str(&format!("0x{}", hex_num.concat()))
+    }
 }

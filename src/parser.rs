@@ -1,7 +1,8 @@
 use {
     crate::common::*, // TODO: not use star
     std::{
-        collections::{hash_map::Entry, HashMap}, mem::size_of
+        collections::{hash_map::Entry, HashMap},
+        mem::size_of,
     },
     winnow::{
         binary::{be_u16, le_f32, le_u16, le_u32, u8},

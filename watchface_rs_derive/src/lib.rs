@@ -33,15 +33,15 @@ fn serialize_struct(ident: Ident, s: DataStruct) -> TokenStream2 {
         .collect();
 
     let mut match_branches = vec![];
+    let mut vals = vec![];
     for field in fields {
         let (name, attrs) = field;
 
         // todo: expect for wfrs_id attribute
         // todo: check that field implements Transform and show error near field
         // todo: different behaivor for enums, plain types and slices
-        // todo: different behaivor for MiBandParams or wrap them in Children node
         // todo: check is it posible to generate serde attributes before serde to ignore fields
-        // todo: check for duplicates
+
         for attr in attrs {
             if !attr.path().is_ident("wfrs_id") {
                 continue;
@@ -59,6 +59,12 @@ fn serialize_struct(ident: Ident, s: DataStruct) -> TokenStream2 {
                             }
 
                             let num: u8 = val[0].base10_parse().unwrap();
+                            if vals.contains(&num) {
+                                return quote_spanned! {
+                                    list.span() => compile_error!("Duplicate `wfrs_id` value");
+                                };
+                            }
+                            vals.push(num);
                             match_branches.push(quote! { #num => (&mut inside.#name as &mut dyn Transform).transform(value), });
                         }
                         Err(_) => {
