@@ -7,17 +7,19 @@ use {
 pub type Params = HashMap<u8, Vec<Param>>;
 
 #[derive(Debug, PartialEq)]
-pub struct Watchface<T: WatchfaceParams> {
-    pub parameters: T,
+pub struct Watchface<T>
+where
+    T: WatchfaceParams,
+    Option<T>: Transform,
+{
+    pub parameters: Option<T>,
     pub images: Vec<Image>,
 }
 pub trait Transform {
-    fn transform(&mut self, key: u8, params: &[Param]);
+    fn transform(&mut self, params: &[Param]);
 }
 
-pub trait WatchfaceParams: Transform {
-    fn new() -> Self;
-}
+pub trait WatchfaceParams {}
 
 #[derive(Debug, PartialEq)]
 pub enum Param {
@@ -36,7 +38,7 @@ pub struct Image {
 }
 
 impl Transform for i32 {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
+    fn transform(&mut self, params: &[Param]) {
         let subvalue = match params.get(0).unwrap() {
             Param::Number(number) => number,
             _ => panic!("First param should be number param"),
@@ -47,7 +49,7 @@ impl Transform for i32 {
 }
 
 impl Transform for usize {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
+    fn transform(&mut self, params: &[Param]) {
         let subvalue = match params.get(0).unwrap() {
             Param::Number(number) => number,
             _ => panic!("First param should be number param"),
@@ -58,7 +60,7 @@ impl Transform for usize {
 }
 
 impl Transform for Option<bool> {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
+    fn transform(&mut self, params: &[Param]) {
         let subvalue = match params.get(0).unwrap() {
             Param::Number(number) => number,
             _ => panic!("First param should be number param"),
@@ -71,7 +73,7 @@ impl Transform for Option<bool> {
 pub type ImgId = u32;
 
 impl Transform for Option<ImgId> {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
+    fn transform(&mut self, params: &[Param]) {
         let subvalue = match params.get(0).unwrap() {
             Param::Number(number) => number,
             _ => panic!("First param should be number param"),
@@ -262,7 +264,7 @@ impl TryFrom<i64> for Alignment {
 }
 
 impl Transform for Option<Alignment> {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
+    fn transform(&mut self, params: &[Param]) {
         match self {
             None => {
                 *self = Some(Default::default());
@@ -286,7 +288,7 @@ impl Transform for Option<Alignment> {
     }
 }
 impl Transform for Alignment {
-    fn transform(&mut self, _key: u8, params: &[Param]) {
+    fn transform(&mut self, params: &[Param]) {
         let subvalue = match params.get(0).unwrap() {
             Param::Number(number) => number,
             _ => panic!("First param should be number param"),
@@ -338,10 +340,4 @@ pub struct TemperatureType {
     #[wfrs_id(3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     suffix_image_index: Option<ImgId>,
-}
-
-/// This is only used for serialize
-#[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn is_zero(num: &u32) -> bool {
-    *num == 0
 }

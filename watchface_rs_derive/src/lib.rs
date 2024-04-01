@@ -59,7 +59,7 @@ fn serialize_struct(ident: Ident, s: DataStruct) -> TokenStream2 {
                             }
 
                             let num: u8 = val[0].base10_parse().unwrap();
-                            match_branches.push(quote! { #num => (&mut inside.#name as &mut dyn Transform).transform(*key, value), });
+                            match_branches.push(quote! { #num => (&mut inside.#name as &mut dyn Transform).transform(value), });
                         }
                         Err(_) => {
                             return quote_spanned! {
@@ -81,7 +81,7 @@ fn serialize_struct(ident: Ident, s: DataStruct) -> TokenStream2 {
 
     let res = quote! {
         impl Transform for Option<#ident> {
-            fn transform(&mut self, _key: u8, params: &[Param]) {
+            fn transform(&mut self, params: &[Param]) {
                 match self {
                     None => {
                         *self = Some(#ident {

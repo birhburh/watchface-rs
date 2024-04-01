@@ -8,10 +8,15 @@ use {
     winnow::{stream::Located, PResult},
 };
 
+pub use common::Watchface;
 pub use miband::MiBandParams;
 
-pub fn parse_watch_face_bin<T: WatchfaceParams>(bytes: &mut &[u8]) -> PResult<Watchface<T>> {
-    bin_parser::<T>(Located::new(bytes))
+pub fn parse_watch_face_bin<T>(bytes: &mut &[u8]) -> PResult<Watchface<T>>
+where
+    T: WatchfaceParams,
+    Option<T>: Transform,
+{
+    bin_parser(Located::new(bytes))
 }
 
 #[cfg(test)]
@@ -50,16 +55,16 @@ mod tests {
             0x00, 0x00, 0x11, 0x21, 0x31, 0x41, 0x12, 0x22, 0x32, 0x42,
         ];
 
-        let result = parse_watch_face_bin::<MiBandParams>(&mut &bytes[..]).unwrap();
+        let result: Watchface<MiBandParams> = parse_watch_face_bin(&mut &bytes[..]).unwrap();
         assert_eq!(
             result,
             Watchface {
-                parameters: MiBandParams {
+                parameters: Some(MiBandParams {
                     background: Some(Background {
                         image: Some(ImageReference {
                             x: 1,
                             y: 258,
-                            image_index: 0,
+                            image_index: Some(0),
                         }),
                         ..Default::default()
                     }),
@@ -68,20 +73,20 @@ mod tests {
                             tens: Some(ImageRange {
                                 x: 16,
                                 y: 32,
-                                image_index: 0,
-                                images_count: 2
+                                image_index: Some(0),
+                                images_count: Some(2)
                             }),
                             ones: Some(ImageRange {
                                 x: 731,
                                 y: 12,
-                                image_index: 1,
-                                images_count: 7
+                                image_index: Some(1),
+                                images_count: Some(7)
                             })
                         }),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
+                }),
                 images: vec![Image {
                     pixels: vec![
                         0x11, // 1st pixel

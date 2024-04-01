@@ -1,8 +1,7 @@
 use {
     crate::common::*, // TODO: not use star
     std::{
-        collections::{hash_map::Entry, HashMap},
-        mem::size_of,
+        collections::{hash_map::Entry, HashMap}, mem::size_of
     },
     winnow::{
         binary::{be_u16, le_f32, le_u16, le_u32, u8},
@@ -259,7 +258,11 @@ pub fn bytes_to_usize(bytes: &[u8]) -> usize {
     usize::from_le_bytes(bytes)
 }
 
-pub fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchface<T>> {
+pub fn bin_parser<T>(mut i: Located<&[u8]>) -> PResult<Watchface<T>>
+where
+    T: WatchfaceParams,
+    Option<T>: Transform,
+{
     let _signature = token::take(4usize).parse_next(&mut i)?;
     let _header = token::take(75usize).parse_next(&mut i)?;
     let _buffer_size = le_u32.parse_next(&mut i)?;
@@ -275,12 +278,12 @@ pub fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchfac
     };
 
     let mut parameters_size: usize = 0;
-    parameters_size.transform(1, first_parameter.get(&1).unwrap());
+    parameters_size.transform(first_parameter.get(&1).unwrap());
     let mut images_count: usize = 0;
-    images_count.transform(2, first_parameter.get(&2).unwrap());
+    images_count.transform(first_parameter.get(&2).unwrap());
 
-    let mut parameters = T::new();
-
+    let mut parameters: Option<T> = None;
+    let mut all_params = HashMap::new();
     let params_start = i.checkpoint();
 
     for (key, value) in parameter_info.iter() {
@@ -296,16 +299,17 @@ pub fn bin_parser<T: WatchfaceParams>(mut i: Located<&[u8]>) -> PResult<Watchfac
         };
 
         let mut offset: usize = 0;
-        offset.transform(1, subvalue.get(&1).unwrap());
+        offset.transform(subvalue.get(&1).unwrap());
         let mut size: usize = 0;
-        size.transform(2, subvalue.get(&2).unwrap());
+        size.transform(subvalue.get(&2).unwrap());
 
         i.next_slice(offset);
         let params = params_parser(&mut i, size)?;
-
-        let params = vec![Param::Child(params)];
-        parameters.transform(*key, &params);
+        all_params.insert(*key, vec![Param::Child(params)]);
     }
+
+    let params = &vec![Param::Child(all_params)];
+    parameters.transform(params);
 
     i.reset(&params_start);
     i.next_slice(parameters_size);

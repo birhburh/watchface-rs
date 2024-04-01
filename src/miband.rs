@@ -5,62 +5,48 @@ use {
     watchface_rs_derive::TransformDerive,
 };
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct MiBandParams {
+    #[wfrs_id(2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub background: Option<Background>,
+    #[wfrs_id(3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time: Option<Time>,
+    #[wfrs_id(4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub activity: Option<Activity>,
+    #[wfrs_id(5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date: Option<Date>,
+    #[wfrs_id(6)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weather: Option<Weather>,
+    #[wfrs_id(7)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub steps_progress: Option<StepsProgress>,
+    #[wfrs_id(8)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<Status>,
+    #[wfrs_id(9)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub battery: Option<Battery>,
+    #[wfrs_id(11)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub other: Option<Other>,
+    #[wfrs_id(14)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub week_days_icons: Option<WeekDaysIcons>,
+    #[wfrs_id(18)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alarm: Option<Alarm>,
+    #[wfrs_id(20)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status2: Option<Status>,
 }
 
-impl Transform for MiBandParams {
-    fn transform(&mut self, key: u8, params: &[Param]) {
-        match key {
-            2 => self.background.transform(key, params),
-            3 => self.time.transform(key, params),
-            4 => self.activity.transform(key, params),
-            5 => self.date.transform(key, params),
-            6 => self.weather.transform(key, params),
-            7 => self.steps_progress.transform(key, params),
-            8 => self.status.transform(key, params),
-            9 => self.battery.transform(key, params),
-            11 => self.other.transform(key, params),
-            14 => self.week_days_icons.transform(key, params),
-            18 => self.alarm.transform(key, params),
-            20 => self.status2.transform(key, params),
-            _ => (),
-        }
-    }
-}
-
-impl WatchfaceParams for MiBandParams {
-    fn new() -> Self {
-        MiBandParams {
-            ..Default::default()
-        }
-    }
-}
+impl WatchfaceParams for MiBandParams {}
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
@@ -248,10 +234,10 @@ pub struct MonthAndDayAndYear {
     pub separate: Option<Separate>,
     #[wfrs_id(2)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub OneLine: Option<OneLine>,
+    pub one_line: Option<OneLine>,
     #[wfrs_id(3)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub OneLineWithYear: Option<OneLine>,
+    pub one_line_with_year: Option<OneLine>,
     #[wfrs_id(4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub two_digits_month: Option<bool>,
@@ -461,11 +447,11 @@ pub struct Linear {
 type Segments = Vec<Coordinates>;
 
 impl Transform for Segments {
-    fn transform(&mut self, key: u8, params: &[Param]) {
+    fn transform(&mut self, params: &[Param]) {
         for i in 0..params.len() {
             let param = &params[i..=i]; // heh
             let mut coordinates = None;
-            coordinates.transform(key, param);
+            coordinates.transform(param);
             self.push(coordinates.unwrap());
         }
     }
