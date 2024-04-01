@@ -70,14 +70,14 @@ impl Transform for Option<bool> {
 
 pub type ImgId = u32;
 
-impl Transform for ImgId {
+impl Transform for Option<ImgId> {
     fn transform(&mut self, _key: u8, params: &[Param]) {
         let subvalue = match params.get(0).unwrap() {
             Param::Number(number) => number,
             _ => panic!("First param should be number param"),
         };
 
-        *self = *subvalue as ImgId;
+        *self = Some(*subvalue as ImgId);
     }
 }
 
@@ -89,9 +89,8 @@ pub struct ImageReference {
     #[wfrs_id(2)]
     pub y: i32,
     #[wfrs_id(3)]
-    pub image_index: ImgId,
-    // #[wfrs_id(4)]
-    // pub z: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image_index: Option<ImgId>,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
@@ -102,9 +101,11 @@ pub struct ImageRange {
     #[wfrs_id(2)]
     pub y: i32,
     #[wfrs_id(3)]
-    pub image_index: ImgId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image_index: Option<ImgId>,
     #[wfrs_id(4)]
-    pub images_count: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub images_count: Option<u32>,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
@@ -118,12 +119,13 @@ pub struct StatusPosition {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
     #[wfrs_id(4)]
-    #[serde(skip_serializing_if = "is_zero")]
-    unknown4: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    unknown4: Option<u32>,
     #[wfrs_id(5)]
-    #[serde(skip_serializing_if = "is_zero")]
-    unknown5: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    unknown5: Option<u32>,
 }
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct StatusImage {
@@ -131,11 +133,11 @@ pub struct StatusImage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub coordinates: Option<StatusPosition>,
     #[wfrs_id(2)]
-    #[serde(skip_serializing_if = "is_zero")]
-    pub on_image_index: ImgId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub on_image_index: Option<ImgId>,
     #[wfrs_id(3)]
-    #[serde(skip_serializing_if = "is_zero")]
-    pub off_image_index: ImgId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub off_image_index: Option<ImgId>,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
@@ -147,9 +149,11 @@ pub struct Coordinates {
     pub y: i32,
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Deserialize)]
 #[serde(rename_all = "PascalCase")]
-pub enum Alignment {
+#[repr(u8)]
+pub enum AlignmentInternal {
+    Unknown = 0, // It probably wrong but I found it in one watchface
     Left = 2,
     Right = 4,
     HCenter = 8,
@@ -168,26 +172,90 @@ pub enum Alignment {
     Center = 72,
 }
 
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+#[repr(u8)]
+pub enum Alignment {
+    Unknown = 0, // It probably wrong but I found it in one watchface
+    Valid(AlignmentInternal),
+}
+
+impl Default for Alignment {
+    fn default() -> Self {
+        Alignment::Valid(Default::default())
+    }
+}
+
+impl Serialize for Alignment {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Alignment::Unknown => serializer.serialize_u8(i64::from(Alignment::Unknown) as u8),
+            Alignment::Valid(v) => serializer.serialize_str(&format!("{v:?}")),
+        }
+    }
+}
+
+impl From<Alignment> for i64 {
+    fn from(v: Alignment) -> Self {
+        match v {
+            Alignment::Unknown => 0,
+            Alignment::Valid(v) => v as i64,
+        }
+    }
+}
+
 impl TryFrom<i64> for Alignment {
     type Error = ();
 
     fn try_from(v: i64) -> Result<Self, Self::Error> {
         match v {
-            x if x == Alignment::Left as i64 => Ok(Alignment::Left),
-            x if x == Alignment::Right as i64 => Ok(Alignment::Right),
-            x if x == Alignment::HCenter as i64 => Ok(Alignment::HCenter),
-            x if x == Alignment::Top as i64 => Ok(Alignment::Top),
-            x if x == Alignment::Bottom as i64 => Ok(Alignment::Bottom),
-            x if x == Alignment::VCenter as i64 => Ok(Alignment::VCenter),
-            x if x == Alignment::TopLeft as i64 => Ok(Alignment::TopLeft),
-            x if x == Alignment::BottomLeft as i64 => Ok(Alignment::BottomLeft),
-            x if x == Alignment::CenterLeft as i64 => Ok(Alignment::CenterLeft),
-            x if x == Alignment::TopRight as i64 => Ok(Alignment::TopRight),
-            x if x == Alignment::BottomRight as i64 => Ok(Alignment::BottomRight),
-            x if x == Alignment::CenterRight as i64 => Ok(Alignment::CenterRight),
-            x if x == Alignment::TopCenter as i64 => Ok(Alignment::TopCenter),
-            x if x == Alignment::BottomCenter as i64 => Ok(Alignment::BottomCenter),
-            x if x == Alignment::Center as i64 => Ok(Alignment::Center),
+            x if x == Alignment::Unknown.try_into().unwrap() => Ok(Alignment::Unknown),
+            x if x == AlignmentInternal::Left as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::Left))
+            }
+            x if x == AlignmentInternal::Right as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::Right))
+            }
+            x if x == AlignmentInternal::HCenter as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::HCenter))
+            }
+            x if x == AlignmentInternal::Top as i64 => Ok(Alignment::Valid(AlignmentInternal::Top)),
+            x if x == AlignmentInternal::Bottom as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::Bottom))
+            }
+            x if x == AlignmentInternal::VCenter as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::VCenter))
+            }
+            x if x == AlignmentInternal::TopLeft as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::TopLeft))
+            }
+            x if x == AlignmentInternal::BottomLeft as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::BottomLeft))
+            }
+            x if x == AlignmentInternal::CenterLeft as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::CenterLeft))
+            }
+            x if x == AlignmentInternal::TopRight as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::TopRight))
+            }
+            x if x == AlignmentInternal::BottomRight as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::BottomRight))
+            }
+            x if x == AlignmentInternal::CenterRight as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::CenterRight))
+            }
+            x if x == AlignmentInternal::TopCenter as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::TopCenter))
+            }
+            x if x == AlignmentInternal::BottomCenter as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::BottomCenter))
+            }
+            x if x == AlignmentInternal::Center as i64 => {
+                Ok(Alignment::Valid(AlignmentInternal::Center))
+            }
             _ => Err(()),
         }
     }
@@ -251,9 +319,11 @@ pub struct NumberInRect {
     #[wfrs_id(7)]
     pub spacing_y: i32,
     #[wfrs_id(8)]
-    pub image_index: ImgId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image_index: Option<ImgId>,
     #[wfrs_id(9)]
-    pub images_count: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub images_count: Option<u32>,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
@@ -263,9 +333,11 @@ pub struct TemperatureType {
     #[serde(skip_serializing_if = "Option::is_none")]
     number: Option<NumberInRect>,
     #[wfrs_id(2)]
-    minus_image_index: ImgId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    minus_image_index: Option<ImgId>,
     #[wfrs_id(3)]
-    suffix_image_index: ImgId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    suffix_image_index: Option<ImgId>,
 }
 
 /// This is only used for serialize

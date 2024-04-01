@@ -3,7 +3,8 @@ use {
     proc_macro2::TokenStream as TokenStream2,
     quote::{quote, quote_spanned},
     syn::{
-        punctuated::Punctuated, spanned::Spanned, Attribute, Data, DataStruct, DeriveInput, Ident, LitInt, Meta, Token
+        punctuated::Punctuated, spanned::Spanned, Attribute, Data, DataStruct, DeriveInput, Ident,
+        LitInt, Meta, Token,
     },
 };
 
@@ -40,6 +41,7 @@ fn serialize_struct(ident: Ident, s: DataStruct) -> TokenStream2 {
         // todo: different behaivor for enums, plain types and slices
         // todo: different behaivor for MiBandParams or wrap them in Children node
         // todo: check is it posible to generate serde attributes before serde to ignore fields
+        // todo: check for duplicates
         for attr in attrs {
             if !attr.path().is_ident("wfrs_id") {
                 continue;
@@ -49,8 +51,7 @@ fn serialize_struct(ident: Ident, s: DataStruct) -> TokenStream2 {
                 Meta::List(list) if list.path.is_ident("wfrs_id") => {
                     match list.parse_args_with(Punctuated::<LitInt, Token![,]>::parse_terminated) {
                         Ok(val) => {
-                            if val.len() != 1
-                            {
+                            if val.len() != 1 {
                                 return quote_spanned! {
                                     list.span() =>
                                     compile_error!("The `wfrs_id` must containt only one number");
@@ -59,8 +60,7 @@ fn serialize_struct(ident: Ident, s: DataStruct) -> TokenStream2 {
 
                             let num: u8 = val[0].base10_parse().unwrap();
                             match_branches.push(quote! { #num => (&mut inside.#name as &mut dyn Transform).transform(*key, value), });
-
-                        },
+                        }
                         Err(_) => {
                             return quote_spanned! {
                                 list.span() =>
@@ -100,7 +100,8 @@ fn serialize_struct(ident: Ident, s: DataStruct) -> TokenStream2 {
                     for (key, value) in params.iter() {
                         match key {
                             #( #match_branches )*
-                            v => panic!("Invalid wfrs id '{v}' for type {}", stringify!(#ident)),
+                            v => (),
+                            // v => panic!("Invalid wfrs id '{v}' for type {}", stringify!(#ident)),
                         }
                     }
                 }
