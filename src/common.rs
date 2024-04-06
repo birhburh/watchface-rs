@@ -15,11 +15,39 @@ where
     pub parameters: Option<T>,
     pub images: Vec<Image>,
 }
+
 pub trait Transform {
     fn transform(&mut self, params: &[Param]);
 }
 
-pub trait WatchfaceParams {}
+impl<T> Watchface<T>
+where
+    T: WatchfaceParams,
+    Option<T>: Transform,
+{
+    pub fn generate_preview(&self, params: Option<PreviewParams>) -> Vec<ImageWithCoords> {
+        match &self.parameters {
+            Some(parameters) => parameters.get_images(params),
+            None => vec![],
+        }
+    }
+}
+
+pub trait WatchfaceParams {
+    fn get_images(&self, params: Option<PreviewParams>) -> Vec<ImageWithCoords>;
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ImageWithCoords {
+    pub x: i32,
+    pub y: i32,
+    pub image_index: ImgId,
+}
+
+pub struct PreviewParams {
+    pub hours: Option<u32>,
+    pub minutes: Option<u32>,
+}
 
 #[derive(Debug, PartialEq)]
 pub enum Param {
@@ -82,7 +110,7 @@ impl Transform for Option<bool> {
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
-pub struct ImgId(u32);
+pub struct ImgId(pub u32);
 
 impl Transform for Option<ImgId> {
     fn transform(&mut self, params: &[Param]) {

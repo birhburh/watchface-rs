@@ -1,6 +1,6 @@
 use {
     crate::common::*, // TODO: not use star
-    serde::{Deserialize, Serialize, ser::SerializeSeq},
+    serde::{ser::SerializeSeq, Deserialize, Serialize},
     std::fmt::Debug,
     watchface_rs_derive::TransformDerive,
 };
@@ -61,7 +61,85 @@ pub struct MiBandParams {
     pub lunar_date: Option<LunarDate>,
 }
 
-impl WatchfaceParams for MiBandParams {}
+impl WatchfaceParams for MiBandParams {
+    fn get_images(&self, params: Option<PreviewParams>) -> Vec<ImageWithCoords> {
+        let mut res = vec![];
+        if let Some(background) = &self.background {
+            if let Some(image) = &background.image {
+                if let Some(image_index) = &image.image_index {
+                    res.push(ImageWithCoords {
+                        x: image.x,
+                        y: image.y,
+                        image_index: ImgId(image_index.0),
+                    })
+                }
+            }
+        }
+
+        if let Some(time) = &self.time {
+            if let Some(hours) = &time.hours {
+                if let Some(tens) = &hours.tens {
+                    if let Some(image_index) = &tens.image_index {
+                        if let Some(params) = &params {
+                            if let Some(two_nums) = &params.hours {
+                                res.push(ImageWithCoords {
+                                    x: tens.x,
+                                    y: tens.y,
+                                    image_index: ImgId(image_index.0 + two_nums / 10),
+                                })
+                            }
+                        }
+                    }
+                }
+
+                if let Some(ones) = &hours.ones {
+                    if let Some(image_index) = &ones.image_index {
+                        if let Some(params) = &params {
+                            if let Some(two_nums) = &params.hours {
+                                res.push(ImageWithCoords {
+                                    x: ones.x,
+                                    y: ones.y,
+                                    image_index: ImgId(image_index.0 + two_nums % 10),
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+
+            if let Some(minutes) = &time.minutes {
+                if let Some(tens) = &minutes.tens {
+                    if let Some(image_index) = &tens.image_index {
+                        if let Some(params) = &params {
+                            if let Some(two_nums) = &params.minutes {
+                                res.push(ImageWithCoords {
+                                    x: tens.x,
+                                    y: tens.y,
+                                    image_index: ImgId(image_index.0 + two_nums / 10),
+                                })
+                            }
+                        }
+                    }
+                }
+
+                if let Some(ones) = &minutes.ones {
+                    if let Some(image_index) = &ones.image_index {
+                        if let Some(params) = &params {
+                            if let Some(two_nums) = &params.minutes {
+                                res.push(ImageWithCoords {
+                                    x: ones.x,
+                                    y: ones.y,
+                                    image_index: ImgId(image_index.0 + two_nums % 10),
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        res
+    }
+}
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
@@ -346,7 +424,7 @@ pub struct Weather {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wind: Option<Wind>,
     #[wfrs_id(6)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="UVIndex")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "UVIndex")]
     pub uv_index: Option<UVIndex>,
 }
 
@@ -432,7 +510,10 @@ pub struct Wind {
     #[serde(skip_serializing_if = "Option::is_none", rename = "SuffixImageIndexCN")]
     pub suffix_image_index_cn: Option<ImgId>,
     #[wfrs_id(4)]
-    #[serde(skip_serializing_if = "Option::is_none", rename = "SuffixImageIndexCN2")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "SuffixImageIndexCN2"
+    )]
     pub suffix_image_index_cn2: Option<ImgId>,
     #[wfrs_id(5)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "ImagePosSuffixEN")]
@@ -449,13 +530,13 @@ pub struct Wind {
 #[serde(rename_all = "PascalCase")]
 pub struct UVIndex {
     #[wfrs_id(1)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="UV")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "UV")]
     pub uv: Option<UV>,
     #[wfrs_id(2)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="UVCN")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "UVCN")]
     pub uvcn: Option<ImageRange>,
     #[wfrs_id(3)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="UVCN2")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "UVCN2")]
     pub uvcn2: Option<ImageRange>,
 }
 
@@ -466,7 +547,7 @@ pub struct UV {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
     #[wfrs_id(2)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="UVCN")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "UVCN")]
     pub suffix_image_index: Option<ImgId>,
 }
 
@@ -737,21 +818,21 @@ pub struct LunarDate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub day: Option<NumberInRect>,
     #[wfrs_id(3)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="DayOf0X")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "DayOf0X")]
     pub day_of_0x: Option<ImgId>,
     #[wfrs_id(4)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="DayOf2X")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "DayOf2X")]
     pub day_of_2x: Option<ImgId>,
     #[wfrs_id(5)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="DayOf10")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "DayOf10")]
     pub day_of_10: Option<ImgId>,
     #[wfrs_id(6)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="DayOf20")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "DayOf20")]
     pub day_of_20: Option<ImgId>,
     #[wfrs_id(7)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="DayOf30")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "DayOf30")]
     pub day_of_30: Option<ImgId>,
     #[wfrs_id(10)]
-    #[serde(skip_serializing_if = "Option::is_none", rename="DayCN2")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "DayCN2")]
     pub day_cn2: Option<NumberInRect>,
 }

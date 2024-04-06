@@ -1,6 +1,7 @@
 mod common;
 mod miband;
 mod parser;
+mod preview;
 
 use {
     common::*, // TODO: not use star
@@ -64,7 +65,7 @@ mod tests {
                         image: Some(ImageReference {
                             x: 1,
                             y: 258,
-                            image_index: Some(0),
+                            image_index: Some(ImgId(0)),
                         }),
                         ..Default::default()
                     }),
@@ -73,13 +74,13 @@ mod tests {
                             tens: Some(ImageRange {
                                 x: 16,
                                 y: 32,
-                                image_index: Some(0),
+                                image_index: Some(ImgId(0)),
                                 images_count: Some(2)
                             }),
                             ones: Some(ImageRange {
                                 x: 731,
                                 y: 12,
-                                image_index: Some(1),
+                                image_index: Some(ImgId(1)),
                                 images_count: Some(7)
                             })
                         }),
