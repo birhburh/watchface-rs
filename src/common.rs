@@ -27,14 +27,18 @@ where
 {
     pub fn generate_preview(&self, params: Option<PreviewParams>) -> Vec<ImageWithCoords> {
         match &self.parameters {
-            Some(parameters) => parameters.get_images(params),
+            Some(parameters) => parameters.get_images(params, &self.images),
             None => vec![],
         }
     }
 }
 
 pub trait WatchfaceParams {
-    fn get_images(&self, params: Option<PreviewParams>) -> Vec<ImageWithCoords>;
+    fn get_images(
+        &self,
+        params: Option<PreviewParams>,
+        images: &Vec<Image>,
+    ) -> Vec<ImageWithCoords>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -44,9 +48,11 @@ pub struct ImageWithCoords {
     pub image_index: ImgId,
 }
 
+#[derive(Debug, Default)]
 pub struct PreviewParams {
     pub hours: Option<u32>,
     pub minutes: Option<u32>,
+    pub steps: Option<u32>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -202,7 +208,7 @@ impl Transform for Vec<Coordinates> {
     }
 }
 
-#[derive(Debug, PartialEq, Default, Deserialize)]
+#[derive(Debug, PartialEq, Default, Deserialize, Clone, Copy)]
 #[serde(rename_all = "PascalCase")]
 #[repr(u8)]
 pub enum AlignmentInternal {

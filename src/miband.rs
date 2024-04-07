@@ -61,8 +61,35 @@ pub struct MiBandParams {
     pub lunar_date: Option<LunarDate>,
 }
 
+fn compute_position_with_aligment(
+    lower_bound: i32,
+    upper_bound: i32,
+    element_size: i32,
+    alignment: u32,
+) -> i32 {
+    let result = if alignment & 0x02 == 0x02 {
+        // lower bound align
+        lower_bound
+    } else if alignment & 0x04 == 0x04 {
+        // upper bound align
+        upper_bound - element_size
+    } else
+    /*if (alignment & 0x08)*/
+    {
+        // center align (default)
+        (lower_bound + upper_bound) / 2 - element_size / 2
+    };
+
+    // don't allow to go lower than the lower bound
+    result.max(lower_bound)
+}
+
 impl WatchfaceParams for MiBandParams {
-    fn get_images(&self, params: Option<PreviewParams>) -> Vec<ImageWithCoords> {
+    fn get_images(
+        &self,
+        params: Option<PreviewParams>,
+        images: &Vec<Image>,
+    ) -> Vec<ImageWithCoords> {
         let mut res = vec![];
         if let Some(background) = &self.background {
             if let Some(image) = &background.image {
@@ -131,6 +158,67 @@ impl WatchfaceParams for MiBandParams {
                                     y: ones.y,
                                     image_index: ImgId(image_index.0 + two_nums % 10),
                                 })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(activity) = &self.activity {
+            if let Some(steps) = &activity.steps {
+                if let Some(number) = &steps.number {
+                    if let Some(params) = &params {
+                        if let Some(value) = &params.steps {
+                            if let Some(image_index) = &number.image_index {
+                                let mut num = *value;
+                                let mut image_ids = vec![];
+                                while num != 0 {
+                                    image_ids.push(num % 10);
+                                    num /= 10;
+                                }
+                                image_ids.reverse();
+                                dbg!(&image_ids);
+
+                                // compute width of text to display
+                                let text_width = image_ids
+                                    .iter()
+                                    .map(|img_id| images[*img_id as usize].width)
+                                    .reduce(|a, b| {
+                                        ((a + b) as i32 + number.spacing_x).try_into().unwrap()
+                                    })
+                                    .unwrap_or_default();
+                                dbg!(&text_width);
+
+                                let aligment = match &number.alignment {
+                                    Alignment::Valid(valid) => *valid as u32,
+                                    Alignment::Unknown => 0,
+                                };
+
+                                // compute coordinates of the left of the first character
+                                let mut x = compute_position_with_aligment(
+                                    number.top_left_x,
+                                    number.bottom_right_x,
+                                    text_width.try_into().unwrap(),
+                                    aligment,
+                                );
+
+                                // Add all characters
+                                for (i, element_image_id) in image_ids.iter().enumerate() {
+                                    let image = &images[*element_image_id as usize];
+                                    res.push(ImageWithCoords {
+                                        x,
+                                        y: compute_position_with_aligment(
+                                            number.top_left_y,
+                                            number.bottom_right_y,
+                                            image.height as i32,
+                                            aligment >> 3,
+                                        ) + i as i32 * number.spacing_y,
+                                        image_index: ImgId(image_index.0 + *element_image_id),
+                                    });
+
+                                    x += image.width as i32 + number.spacing_x;
+                                }
                             }
                         }
                     }
@@ -232,7 +320,7 @@ pub struct Activity {
     #[serde(skip_serializing_if = "Option::is_none", rename = "PAI")]
     pub pai: Option<PAI>,
     #[wfrs_id(7)]
-    unknown_v7: i32,
+    pub unknown_v7: i32,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
