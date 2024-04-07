@@ -1,5 +1,5 @@
 use {
-    image::{ImageBuffer, PixelWithColorType},
+    image::ImageBuffer,
     std::{
         error::Error,
         fs::{self, File},
@@ -52,20 +52,19 @@ fn main() -> Result<(), Box<dyn Error>> {
         hours: Some(10),
         minutes: Some(43),
         steps: Some(14876),
+        pulse: Some(62),
+        do_not_disturb: true,
+        bluetooth: false,
+        lock: false,
+        month: Some(10),
+        day: Some(24),
         ..Default::default()
     }));
 
-    dbg!(&preview);
-    let mut final_image = ImageBuffer::from_fn(126, 294, |x, y| {
-        if (x + y) % 2 == 0 {
-            image::Rgb([0, 0, 0])
-        } else {
-            image::Rgb([255, 255, 255])
-        }
-    });
+    let mut final_image = ImageBuffer::from_pixel(126, 294, image::Rgba([0, 0, 0, 255]));
     for image in preview {
         let path = format!("{output}/{}.png", image.image_index.0);
-        let img = image::open(path).unwrap().into_rgb8();
+        let img = image::open(path).unwrap().into_rgba8();
         image::imageops::overlay(&mut final_image, &img, image.x as i64, image.y as i64);
     }
     let path = format!("{output}/preview.png");

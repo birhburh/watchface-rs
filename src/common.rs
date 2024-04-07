@@ -53,6 +53,12 @@ pub struct PreviewParams {
     pub hours: Option<u32>,
     pub minutes: Option<u32>,
     pub steps: Option<u32>,
+    pub pulse: Option<u32>,
+    pub do_not_disturb: bool,
+    pub lock: bool,
+    pub bluetooth: bool,
+    pub month: Option<u32>,
+    pub day: Option<u32>,
 }
 
 #[derive(Debug, PartialEq)]

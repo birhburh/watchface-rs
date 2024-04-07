@@ -5,6 +5,8 @@ use {
     watchface_rs_derive::TransformDerive,
 };
 
+// TODO: check that all fields from UIHH_MIBAND.json copied
+
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct MiBandParams {
@@ -84,6 +86,137 @@ fn compute_position_with_aligment(
     result.max(lower_bound)
 }
 
+fn status_image_get_images(
+    status_image: &Option<StatusImage>,
+    param: bool,
+    _images: &Vec<Image>,
+) -> Vec<ImageWithCoords> {
+    let mut res = vec![];
+
+    if let Some(status_image) = &status_image {
+        if param {
+            if let Some(on_image_index) = &status_image.on_image_index {
+                if let Some(coordinates) = &status_image.coordinates {
+                    res.push(ImageWithCoords {
+                        x: coordinates.x,
+                        y: coordinates.y,
+                        image_index: ImgId(on_image_index.0),
+                    });
+                }
+            }
+        } else {
+            if let Some(off_image_index) = &status_image.off_image_index {
+                if let Some(coordinates) = &status_image.coordinates {
+                    res.push(ImageWithCoords {
+                        x: coordinates.x,
+                        y: coordinates.y,
+                        image_index: ImgId(off_image_index.0),
+                    });
+                }
+            }
+        }
+    }
+
+    res
+}
+
+fn number_get_images(
+    number: &Option<NumberInRect>,
+    param: Option<u32>,
+    images: &Vec<Image>,
+) -> Vec<ImageWithCoords> {
+    let mut res = vec![];
+
+    if let Some(number) = number {
+        if let Some(value) = &param {
+            if let Some(image_index) = &number.image_index {
+                let mut num = *value;
+                let mut image_ids = vec![];
+                while num != 0 {
+                    image_ids.push(num % 10);
+                    num /= 10;
+                }
+                image_ids.reverse();
+
+                // compute width of text to display
+                let text_width = image_ids
+                    .iter()
+                    .map(|img_id| images[(image_index.0 + *img_id) as usize].width)
+                    .reduce(|a, b| ((a + b) as i32 + number.spacing_x).try_into().unwrap())
+                    .unwrap_or_default();
+
+                let aligment = match &number.alignment {
+                    Alignment::Valid(valid) => *valid as u32,
+                    Alignment::Unknown => 0,
+                };
+
+                // compute coordinates of the left of the first character
+                let mut x = compute_position_with_aligment(
+                    number.top_left_x,
+                    number.bottom_right_x,
+                    text_width.try_into().unwrap(),
+                    aligment,
+                );
+
+                // Add all characters
+                for (i, element_image_id) in image_ids.iter().enumerate() {
+                    let image = &images[(image_index.0 + *element_image_id) as usize];
+                    res.push(ImageWithCoords {
+                        x,
+                        y: compute_position_with_aligment(
+                            number.top_left_y,
+                            number.bottom_right_y,
+                            image.height as i32,
+                            aligment >> 3,
+                        ) + i as i32 * number.spacing_y,
+                        image_index: ImgId(image_index.0 + *element_image_id),
+                    });
+
+                    x += image.width as i32 + number.spacing_x;
+                }
+            }
+        }
+    }
+
+    res
+}
+
+fn time_numbers_get_images(
+    time_numbers: &Option<TimeNumbers>,
+    param: Option<u32>,
+    _images: &Vec<Image>,
+) -> Vec<ImageWithCoords> {
+    let mut res = vec![];
+
+    if let Some(time_numbers) = time_numbers {
+        if let Some(tens) = &time_numbers.tens {
+            if let Some(image_index) = &tens.image_index {
+                if let Some(two_nums) = param {
+                    res.push(ImageWithCoords {
+                        x: tens.x,
+                        y: tens.y,
+                        image_index: ImgId(image_index.0 + two_nums / 10),
+                    })
+                }
+            }
+        }
+
+        if let Some(ones) = &time_numbers.ones {
+            if let Some(image_index) = &ones.image_index {
+                if let Some(two_nums) = param {
+                    res.push(ImageWithCoords {
+                        x: ones.x,
+                        y: ones.y,
+                        image_index: ImgId(image_index.0 + two_nums % 10),
+                    })
+                }
+            }
+        }
+    }
+
+    res
+}
+
 impl WatchfaceParams for MiBandParams {
     fn get_images(
         &self,
@@ -104,125 +237,57 @@ impl WatchfaceParams for MiBandParams {
         }
 
         if let Some(time) = &self.time {
-            if let Some(hours) = &time.hours {
-                if let Some(tens) = &hours.tens {
-                    if let Some(image_index) = &tens.image_index {
-                        if let Some(params) = &params {
-                            if let Some(two_nums) = &params.hours {
-                                res.push(ImageWithCoords {
-                                    x: tens.x,
-                                    y: tens.y,
-                                    image_index: ImgId(image_index.0 + two_nums / 10),
-                                })
-                            }
-                        }
-                    }
-                }
-
-                if let Some(ones) = &hours.ones {
-                    if let Some(image_index) = &ones.image_index {
-                        if let Some(params) = &params {
-                            if let Some(two_nums) = &params.hours {
-                                res.push(ImageWithCoords {
-                                    x: ones.x,
-                                    y: ones.y,
-                                    image_index: ImgId(image_index.0 + two_nums % 10),
-                                })
-                            }
-                        }
-                    }
-                }
-            }
-
-            if let Some(minutes) = &time.minutes {
-                if let Some(tens) = &minutes.tens {
-                    if let Some(image_index) = &tens.image_index {
-                        if let Some(params) = &params {
-                            if let Some(two_nums) = &params.minutes {
-                                res.push(ImageWithCoords {
-                                    x: tens.x,
-                                    y: tens.y,
-                                    image_index: ImgId(image_index.0 + two_nums / 10),
-                                })
-                            }
-                        }
-                    }
-                }
-
-                if let Some(ones) = &minutes.ones {
-                    if let Some(image_index) = &ones.image_index {
-                        if let Some(params) = &params {
-                            if let Some(two_nums) = &params.minutes {
-                                res.push(ImageWithCoords {
-                                    x: ones.x,
-                                    y: ones.y,
-                                    image_index: ImgId(image_index.0 + two_nums % 10),
-                                })
-                            }
-                        }
-                    }
-                }
+            if let Some(params) = &params {
+                res.append(&mut &mut time_numbers_get_images(
+                    &time.hours,
+                    params.hours,
+                    images,
+                ));
+                res.append(&mut &mut time_numbers_get_images(
+                    &time.minutes,
+                    params.minutes,
+                    images,
+                ));
             }
         }
 
         if let Some(activity) = &self.activity {
-            if let Some(steps) = &activity.steps {
-                if let Some(number) = &steps.number {
-                    if let Some(params) = &params {
-                        if let Some(value) = &params.steps {
-                            if let Some(image_index) = &number.image_index {
-                                let mut num = *value;
-                                let mut image_ids = vec![];
-                                while num != 0 {
-                                    image_ids.push(num % 10);
-                                    num /= 10;
-                                }
-                                image_ids.reverse();
-                                dbg!(&image_ids);
-
-                                // compute width of text to display
-                                let text_width = image_ids
-                                    .iter()
-                                    .map(|img_id| images[*img_id as usize].width)
-                                    .reduce(|a, b| {
-                                        ((a + b) as i32 + number.spacing_x).try_into().unwrap()
-                                    })
-                                    .unwrap_or_default();
-                                dbg!(&text_width);
-
-                                let aligment = match &number.alignment {
-                                    Alignment::Valid(valid) => *valid as u32,
-                                    Alignment::Unknown => 0,
-                                };
-
-                                // compute coordinates of the left of the first character
-                                let mut x = compute_position_with_aligment(
-                                    number.top_left_x,
-                                    number.bottom_right_x,
-                                    text_width.try_into().unwrap(),
-                                    aligment,
-                                );
-
-                                // Add all characters
-                                for (i, element_image_id) in image_ids.iter().enumerate() {
-                                    let image = &images[(image_index.0 + *element_image_id) as usize];
-                                    res.push(ImageWithCoords {
-                                        x,
-                                        y: compute_position_with_aligment(
-                                            number.top_left_y,
-                                            number.bottom_right_y,
-                                            image.height as i32,
-                                            aligment >> 3,
-                                        ) + i as i32 * number.spacing_y,
-                                        image_index: ImgId(image_index.0 + *element_image_id),
-                                    });
-
-                                    x += image.width as i32 + number.spacing_x;
-                                }
-                            }
-                        }
-                    }
+            if let Some(params) = &params {
+                if let Some(steps) = &activity.steps {
+                    res.append(&mut &mut number_get_images(
+                        &steps.number,
+                        params.steps,
+                        images,
+                    ));
                 }
+
+                if let Some(pulse) = &activity.pulse {
+                    res.append(&mut &mut number_get_images(
+                        &pulse.number,
+                        params.pulse,
+                        images,
+                    ));
+                }
+            }
+        }
+
+        if let Some(status) = &self.status {
+            if let Some(params) = &params {
+                res.append(&mut status_image_get_images(
+                    &status.do_not_disturb,
+                    params.do_not_disturb,
+                    images,
+                ));
+                res.append(&mut status_image_get_images(
+                    &status.lock,
+                    params.lock,
+                    images,
+                ));
+                res.append(&mut status_image_get_images(
+                    &status.bluetooth,
+                    params.bluetooth,
+                    images,
+                ));
             }
         }
         res
