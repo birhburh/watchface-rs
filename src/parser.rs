@@ -264,6 +264,7 @@ where
     T: WatchfaceParams,
     Option<T>: Transform,
 {
+    // TODO: check signature
     let _signature = token::take(4usize).parse_next(&mut i)?;
     let _header = token::take(75usize).parse_next(&mut i)?;
     let _buffer_size = le_u32.parse_next(&mut i)?;

@@ -205,7 +205,7 @@ impl WatchfaceParams for MiBandParams {
 
                                 // Add all characters
                                 for (i, element_image_id) in image_ids.iter().enumerate() {
-                                    let image = &images[*element_image_id as usize];
+                                    let image = &images[(image_index.0 + *element_image_id) as usize];
                                     res.push(ImageWithCoords {
                                         x,
                                         y: compute_position_with_aligment(

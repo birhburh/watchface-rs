@@ -1,10 +1,11 @@
 use {
+    image::{ImageBuffer, PixelWithColorType},
     std::{
         error::Error,
         fs::{self, File},
         io::{BufWriter, ErrorKind},
     },
-    watchface_rs::{parse_watch_face_bin, MiBandParams, Watchface},
+    watchface_rs::{parse_watch_face_bin, MiBandParams, PreviewParams, Watchface},
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -46,6 +47,29 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut writer = enc.write_header().unwrap();
         writer.write_image_data(&image.pixels).unwrap();
     }
+
+    let preview = watchface.generate_preview(Some(PreviewParams {
+        hours: Some(10),
+        minutes: Some(43),
+        steps: Some(14876),
+        ..Default::default()
+    }));
+
+    dbg!(&preview);
+    let mut final_image = ImageBuffer::from_fn(126, 294, |x, y| {
+        if (x + y) % 2 == 0 {
+            image::Rgb([0, 0, 0])
+        } else {
+            image::Rgb([255, 255, 255])
+        }
+    });
+    for image in preview {
+        let path = format!("{output}/{}.png", image.image_index.0);
+        let img = image::open(path).unwrap().into_rgb8();
+        image::imageops::overlay(&mut final_image, &img, image.x as i64, image.y as i64);
+    }
+    let path = format!("{output}/preview.png");
+    final_image.save(path).expect("Failed to save final image");
 
     println!("Written to {output}");
     Ok(())
