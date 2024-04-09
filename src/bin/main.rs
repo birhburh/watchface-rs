@@ -66,6 +66,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         day_temperature: Some(43),
         night_temperature: Some(-10),
         battery: Some(64),
+        distance: Some(14.6),
+        calories: Some(3453),
         ..Default::default()
     }));
 

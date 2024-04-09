@@ -122,9 +122,10 @@ fn status_image_get_images(
 
 fn number_get_images(
     number: &Option<NumberInRect>,
-    param: i32,
+    param: f32,
     images: &Vec<Image>,
-    _decimal_point_image_index: &Option<ImgId>,
+    prefix_image_index: &Option<ImgId>,
+    decimal_point_image_index: &Option<ImgId>,
     minus_image_index: &Option<ImgId>,
     suffix_image_index: &Option<ImgId>,
     min_width: Option<usize>,
@@ -133,21 +134,27 @@ fn number_get_images(
 
     if let Some(number) = number {
         if let Some(image_index) = &number.image_index {
-            let mut num = param.abs();
-            let mut image_ids = vec![];
-            while num != 0 {
-                image_ids.push((num % 10) as u32);
-                num /= 10;
+            let mut int_part = param.abs().trunc() as u32;
+            let mut int_part_image_ids = vec![];
+            while int_part != 0 {
+                int_part_image_ids.push(int_part % 10);
+                int_part /= 10;
             }
             if let Some(min_width) = min_width {
-                while image_ids.len() < min_width {
-                    image_ids.push(0);
+                while int_part_image_ids.len() < min_width {
+                    int_part_image_ids.push(0);
                 }
             }
-            image_ids.reverse();
+            int_part_image_ids.reverse();
+
+            let fract_part_image_id = if param.fract() > 0.0 {
+                ((param.fract() * 10.) as usize) % 10
+            } else {
+                Default::default()
+            };
 
             // compute width of text to display
-            let mut text_width = image_ids
+            let mut text_width = int_part_image_ids
                 .iter()
                 .map(|img_id| images[(image_index.0 + *img_id) as usize].width)
                 .reduce(|a, b| ((a + b) as i32 + number.spacing_x).try_into().unwrap())
@@ -158,13 +165,38 @@ fn number_get_images(
                 Alignment::Unknown => 0,
             };
 
-            if param < 0 {
+            if let Some(prefix_image_index) = prefix_image_index {
+                text_width += <i32 as TryInto<u16>>::try_into(
+                    images[(prefix_image_index.0) as usize].width as i32 + number.spacing_x,
+                )
+                .unwrap();
+            }
+            if param < 0.0 {
                 if let Some(minus_image_index) = minus_image_index {
-                    text_width += <i32 as TryInto<u16>>::try_into(images[(minus_image_index.0) as usize].width as i32 + number.spacing_x).unwrap();
+                    text_width += <i32 as TryInto<u16>>::try_into(
+                        images[(minus_image_index.0) as usize].width as i32 + number.spacing_x,
+                    )
+                    .unwrap();
+                }
+            }
+            if param.fract() > 0.0 {
+                if let Some(decimal_point_image_index) = decimal_point_image_index {
+                    text_width += <i32 as TryInto<u16>>::try_into(
+                        images[(decimal_point_image_index.0) as usize].width as i32
+                            + number.spacing_x,
+                    )
+                    .unwrap();
+                    text_width += <i32 as TryInto<u16>>::try_into(
+                        images[image_index.0 as usize + fract_part_image_id].width as i32 + number.spacing_x,
+                    )
+                    .unwrap();
                 }
             }
             if let Some(suffix_image_index) = suffix_image_index {
-                text_width += <i32 as TryInto<u16>>::try_into(images[(suffix_image_index.0) as usize].width as i32 + number.spacing_x).unwrap();
+                text_width += <i32 as TryInto<u16>>::try_into(
+                    images[(suffix_image_index.0) as usize].width as i32 + number.spacing_x,
+                )
+                .unwrap();
             }
 
             // compute coordinates of the left of the first character
@@ -176,7 +208,24 @@ fn number_get_images(
             );
 
             let mut off = 0;
-            if param < 0 {
+
+            if let Some(prefix_image_index) = prefix_image_index {
+                let image = &images[(prefix_image_index.0) as usize];
+                res.push(ImageWithCoords {
+                    x,
+                    y: compute_position_with_aligment(
+                        number.top_left_y,
+                        number.bottom_right_y,
+                        image.height as i32,
+                        aligment >> 3,
+                    ) + number.spacing_y,
+                    image_index: ImgId(prefix_image_index.0),
+                });
+                off += 1;
+                x += image.width as i32 + number.spacing_x;
+            }
+
+            if param < 0.0 {
                 if let Some(minus_image_index) = minus_image_index {
                     let image = &images[(minus_image_index.0) as usize];
                     res.push(ImageWithCoords {
@@ -189,14 +238,14 @@ fn number_get_images(
                         ) + number.spacing_y,
                         image_index: ImgId(minus_image_index.0),
                     });
-                    off = 1;
+                    off += 1;
                     x += image.width as i32 + number.spacing_x;
                 }
             }
 
             // Add all characters
-            for (i, element_image_id) in image_ids.iter().enumerate() {
-                let image = &images[(image_index.0 + *element_image_id) as usize];
+            for element_image_id in int_part_image_ids {
+                let image = &images[(image_index.0 + element_image_id) as usize];
                 res.push(ImageWithCoords {
                     x,
                     y: compute_position_with_aligment(
@@ -204,11 +253,45 @@ fn number_get_images(
                         number.bottom_right_y,
                         image.height as i32,
                         aligment >> 3,
-                    ) + (i + off) as i32 * number.spacing_y,
-                    image_index: ImgId(image_index.0 + *element_image_id),
+                    ) + off * number.spacing_y,
+                    image_index: ImgId(image_index.0 + element_image_id),
                 });
 
+                off += 1;
                 x += image.width as i32 + number.spacing_x;
+            }
+
+            if param.fract() > 0.0 {
+                if let Some(decimal_point_image_index) = decimal_point_image_index {
+                    let image = &images[(decimal_point_image_index.0) as usize];
+                    res.push(ImageWithCoords {
+                        x,
+                        y: compute_position_with_aligment(
+                            number.top_left_y,
+                            number.bottom_right_y,
+                            image.height as i32,
+                            aligment >> 3,
+                        ) + off * number.spacing_y,
+                        image_index: ImgId(decimal_point_image_index.0),
+                    });
+
+                    off += 1;
+                    x += image.width as i32 + number.spacing_x;
+
+                    let image = &images[image_index.0 as usize + fract_part_image_id];
+                    res.push(ImageWithCoords {
+                        x,
+                        y: compute_position_with_aligment(
+                            number.top_left_y,
+                            number.bottom_right_y,
+                            image.height as i32,
+                            aligment >> 3,
+                        ) + off * number.spacing_y,
+                        image_index: ImgId(image_index.0 + fract_part_image_id as u32),
+                    });
+
+                    x += image.width as i32 + number.spacing_x;
+                }
             }
 
             if let Some(suffix_image_index) = suffix_image_index {
@@ -315,8 +398,9 @@ impl WatchfaceParams for MiBandParams {
                     if let Some(value) = params.steps {
                         res.append(&mut &mut number_get_images(
                             &steps.number,
-                            value as i32,
+                            value as f32,
                             images,
+                            &steps.prefix_image_index,
                             &None,
                             &None,
                             &None,
@@ -329,11 +413,42 @@ impl WatchfaceParams for MiBandParams {
                     if let Some(value) = params.pulse {
                         res.append(&mut &mut number_get_images(
                             &pulse.number,
-                            value as i32,
+                            value as f32,
+                            images,
+                            &pulse.prefix_image_index,
+                            &None,
+                            &None,
+                            &None,
+                            None,
+                        ));
+                    }
+                }
+
+                if let Some(distance) = &activity.distance {
+                    if let Some(value) = params.distance {
+                        res.append(&mut &mut number_get_images(
+                            &distance.number,
+                            value as f32,
+                            images,
+                            &None,
+                            &distance.decimal_point_image_index,
+                            &None,
+                            &distance.km_suffix_image_index,
+                            None,
+                        ));
+                    }
+                }
+
+                if let Some(calories) = &activity.calories {
+                    if let Some(value) = params.calories {
+                        res.append(&mut &mut number_get_images(
+                            &calories.number,
+                            value as f32,
                             images,
                             &None,
                             &None,
                             &None,
+                            &calories.suffix_image_index,
                             None,
                         ));
                     }
@@ -368,8 +483,9 @@ impl WatchfaceParams for MiBandParams {
                         if let Some(value) = params.month {
                             res.append(&mut &mut number_get_images(
                                 &separate.month,
-                                value as i32,
+                                value as f32,
                                 images,
+                                &None,
                                 &None,
                                 &None,
                                 &None,
@@ -379,8 +495,9 @@ impl WatchfaceParams for MiBandParams {
                         if let Some(value) = params.day {
                             res.append(&mut &mut number_get_images(
                                 &separate.day,
-                                value as i32,
+                                value as f32,
                                 images,
+                                &None,
                                 &None,
                                 &None,
                                 &None,
@@ -443,8 +560,9 @@ impl WatchfaceParams for MiBandParams {
                         if let Some(current) = &temperature.current {
                             res.append(&mut number_get_images(
                                 &current.number,
-                                value,
+                                value as f32,
                                 images,
+                                &None,
                                 &None,
                                 &current.minus_image_index,
                                 &current.suffix_image_index,
@@ -459,8 +577,9 @@ impl WatchfaceParams for MiBandParams {
                                 if let Some(value) = params.day_temperature {
                                     res.append(&mut number_get_images(
                                         &day.number,
-                                        value,
+                                        value as f32,
                                         images,
+                                        &None,
                                         &None,
                                         &day.minus_image_index,
                                         &day.suffix_image_index,
@@ -473,8 +592,9 @@ impl WatchfaceParams for MiBandParams {
                                 if let Some(value) = params.night_temperature {
                                     res.append(&mut number_get_images(
                                         &night.number,
-                                        value,
+                                        value as f32,
                                         images,
+                                        &None,
                                         &None,
                                         &night.minus_image_index,
                                         &night.suffix_image_index,
@@ -494,11 +614,12 @@ impl WatchfaceParams for MiBandParams {
                     if let Some(value) = params.battery {
                         res.append(&mut number_get_images(
                             &battery_text.number,
-                            value as i32,
+                            value as f32,
                             images,
+                            &battery_text.prefix_image_index,
                             &None,
                             &None,
-                            &None,
+                            &battery_text.suffix_image_index,
                             None,
                         ));
                     }

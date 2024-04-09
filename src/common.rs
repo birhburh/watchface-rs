@@ -67,6 +67,8 @@ pub struct PreviewParams {
     pub day_temperature: Option<i32>,
     pub night_temperature: Option<i32>,
     pub battery: Option<u32>,
+    pub distance: Option<f32>,
+    pub calories: Option<u32>,
 }
 
 #[derive(Debug, PartialEq)]
