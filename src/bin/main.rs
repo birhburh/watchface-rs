@@ -49,15 +49,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let preview = watchface.generate_preview(Some(PreviewParams {
-        hours: Some(10),
-        minutes: Some(43),
-        steps: Some(14876),
-        pulse: Some(62),
+        hours: Some(12),
+        minutes: Some(6),
+        steps: Some(12882),
+        pulse: Some(123),
         do_not_disturb: true,
         bluetooth: false,
         lock: false,
-        month: Some(10),
-        day: Some(24),
+        month: Some(3),
+        day: Some(23),
+        time12h: true,
+        am: false,
+        weekday: Some(3),
+        weather: Some(4),
+        temperature: Some(26),
+        day_temperature: Some(43),
+        night_temperature: Some(-10),
+        battery: Some(64),
         ..Default::default()
     }));
 

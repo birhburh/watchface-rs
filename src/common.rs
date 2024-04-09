@@ -57,8 +57,16 @@ pub struct PreviewParams {
     pub do_not_disturb: bool,
     pub lock: bool,
     pub bluetooth: bool,
+    pub time12h: bool,
+    pub am: bool,
     pub month: Option<u32>,
     pub day: Option<u32>,
+    pub weekday: Option<u32>,
+    pub weather: Option<u32>,
+    pub temperature: Option<i32>,
+    pub day_temperature: Option<i32>,
+    pub night_temperature: Option<i32>,
+    pub battery: Option<u32>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -396,13 +404,13 @@ pub struct NumberInRect {
 pub struct TemperatureType {
     #[wfrs_id(1)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    number: Option<NumberInRect>,
+    pub number: Option<NumberInRect>,
     #[wfrs_id(2)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    minus_image_index: Option<ImgId>,
+    pub minus_image_index: Option<ImgId>,
     #[wfrs_id(3)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    suffix_image_index: Option<ImgId>,
+    pub suffix_image_index: Option<ImgId>,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]

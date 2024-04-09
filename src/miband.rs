@@ -122,45 +122,63 @@ fn status_image_get_images(
 
 fn number_get_images(
     number: &Option<NumberInRect>,
-    param: Option<u32>,
+    param: i32,
     images: &Vec<Image>,
+    _decimal_point_image_index: &Option<ImgId>,
+    minus_image_index: &Option<ImgId>,
+    suffix_image_index: &Option<ImgId>,
+    min_width: Option<usize>,
 ) -> Vec<ImageWithCoords> {
     let mut res = vec![];
 
     if let Some(number) = number {
-        if let Some(value) = &param {
-            if let Some(image_index) = &number.image_index {
-                let mut num = *value;
-                let mut image_ids = vec![];
-                while num != 0 {
-                    image_ids.push(num % 10);
-                    num /= 10;
+        if let Some(image_index) = &number.image_index {
+            let mut num = param.abs();
+            let mut image_ids = vec![];
+            while num != 0 {
+                image_ids.push((num % 10) as u32);
+                num /= 10;
+            }
+            if let Some(min_width) = min_width {
+                while image_ids.len() < min_width {
+                    image_ids.push(0);
                 }
-                image_ids.reverse();
+            }
+            image_ids.reverse();
 
-                // compute width of text to display
-                let text_width = image_ids
-                    .iter()
-                    .map(|img_id| images[(image_index.0 + *img_id) as usize].width)
-                    .reduce(|a, b| ((a + b) as i32 + number.spacing_x).try_into().unwrap())
-                    .unwrap_or_default();
+            // compute width of text to display
+            let mut text_width = image_ids
+                .iter()
+                .map(|img_id| images[(image_index.0 + *img_id) as usize].width)
+                .reduce(|a, b| ((a + b) as i32 + number.spacing_x).try_into().unwrap())
+                .unwrap_or_default();
 
-                let aligment = match &number.alignment {
-                    Alignment::Valid(valid) => *valid as u32,
-                    Alignment::Unknown => 0,
-                };
+            let aligment = match &number.alignment {
+                Alignment::Valid(valid) => *valid as u32,
+                Alignment::Unknown => 0,
+            };
 
-                // compute coordinates of the left of the first character
-                let mut x = compute_position_with_aligment(
-                    number.top_left_x,
-                    number.bottom_right_x,
-                    text_width.try_into().unwrap(),
-                    aligment,
-                );
+            if param < 0 {
+                if let Some(minus_image_index) = minus_image_index {
+                    text_width += <i32 as TryInto<u16>>::try_into(images[(minus_image_index.0) as usize].width as i32 + number.spacing_x).unwrap();
+                }
+            }
+            if let Some(suffix_image_index) = suffix_image_index {
+                text_width += <i32 as TryInto<u16>>::try_into(images[(suffix_image_index.0) as usize].width as i32 + number.spacing_x).unwrap();
+            }
 
-                // Add all characters
-                for (i, element_image_id) in image_ids.iter().enumerate() {
-                    let image = &images[(image_index.0 + *element_image_id) as usize];
+            // compute coordinates of the left of the first character
+            let mut x = compute_position_with_aligment(
+                number.top_left_x,
+                number.bottom_right_x,
+                text_width.try_into().unwrap(),
+                aligment,
+            );
+
+            let mut off = 0;
+            if param < 0 {
+                if let Some(minus_image_index) = minus_image_index {
+                    let image = &images[(minus_image_index.0) as usize];
                     res.push(ImageWithCoords {
                         x,
                         y: compute_position_with_aligment(
@@ -168,13 +186,64 @@ fn number_get_images(
                             number.bottom_right_y,
                             image.height as i32,
                             aligment >> 3,
-                        ) + i as i32 * number.spacing_y,
-                        image_index: ImgId(image_index.0 + *element_image_id),
+                        ) + number.spacing_y,
+                        image_index: ImgId(minus_image_index.0),
                     });
-
+                    off = 1;
                     x += image.width as i32 + number.spacing_x;
                 }
             }
+
+            // Add all characters
+            for (i, element_image_id) in image_ids.iter().enumerate() {
+                let image = &images[(image_index.0 + *element_image_id) as usize];
+                res.push(ImageWithCoords {
+                    x,
+                    y: compute_position_with_aligment(
+                        number.top_left_y,
+                        number.bottom_right_y,
+                        image.height as i32,
+                        aligment >> 3,
+                    ) + (i + off) as i32 * number.spacing_y,
+                    image_index: ImgId(image_index.0 + *element_image_id),
+                });
+
+                x += image.width as i32 + number.spacing_x;
+            }
+
+            if let Some(suffix_image_index) = suffix_image_index {
+                let image = &images[(suffix_image_index.0) as usize];
+                res.push(ImageWithCoords {
+                    x,
+                    y: compute_position_with_aligment(
+                        number.top_left_y,
+                        number.bottom_right_y,
+                        image.height as i32,
+                        aligment >> 3,
+                    ) + number.spacing_y,
+                    image_index: ImgId(suffix_image_index.0),
+                });
+            }
+        }
+    }
+
+    res
+}
+
+fn image_range_get_images(
+    image_range: &Option<ImageRange>,
+    value: u32,
+    _images: &Vec<Image>,
+) -> Vec<ImageWithCoords> {
+    let mut res = vec![];
+
+    if let Some(image_range) = &image_range {
+        if let Some(image_index) = &image_range.image_index {
+            res.push(ImageWithCoords {
+                x: image_range.x,
+                y: image_range.y,
+                image_index: ImgId(image_index.0 + value),
+            })
         }
     }
 
@@ -184,33 +253,22 @@ fn number_get_images(
 fn time_numbers_get_images(
     time_numbers: &Option<TimeNumbers>,
     param: Option<u32>,
-    _images: &Vec<Image>,
+    images: &Vec<Image>,
 ) -> Vec<ImageWithCoords> {
     let mut res = vec![];
 
     if let Some(time_numbers) = time_numbers {
-        if let Some(tens) = &time_numbers.tens {
-            if let Some(image_index) = &tens.image_index {
-                if let Some(two_nums) = param {
-                    res.push(ImageWithCoords {
-                        x: tens.x,
-                        y: tens.y,
-                        image_index: ImgId(image_index.0 + two_nums / 10),
-                    })
-                }
-            }
-        }
-
-        if let Some(ones) = &time_numbers.ones {
-            if let Some(image_index) = &ones.image_index {
-                if let Some(two_nums) = param {
-                    res.push(ImageWithCoords {
-                        x: ones.x,
-                        y: ones.y,
-                        image_index: ImgId(image_index.0 + two_nums % 10),
-                    })
-                }
-            }
+        if let Some(two_nums) = param {
+            res.append(&mut &mut image_range_get_images(
+                &time_numbers.tens,
+                two_nums / 10,
+                images,
+            ));
+            res.append(&mut &mut image_range_get_images(
+                &time_numbers.ones,
+                two_nums % 10,
+                images,
+            ));
         }
     }
 
@@ -254,19 +312,31 @@ impl WatchfaceParams for MiBandParams {
         if let Some(activity) = &self.activity {
             if let Some(params) = &params {
                 if let Some(steps) = &activity.steps {
-                    res.append(&mut &mut number_get_images(
-                        &steps.number,
-                        params.steps,
-                        images,
-                    ));
+                    if let Some(value) = params.steps {
+                        res.append(&mut &mut number_get_images(
+                            &steps.number,
+                            value as i32,
+                            images,
+                            &None,
+                            &None,
+                            &None,
+                            None,
+                        ));
+                    }
                 }
 
                 if let Some(pulse) = &activity.pulse {
-                    res.append(&mut &mut number_get_images(
-                        &pulse.number,
-                        params.pulse,
-                        images,
-                    ));
+                    if let Some(value) = params.pulse {
+                        res.append(&mut &mut number_get_images(
+                            &pulse.number,
+                            value as i32,
+                            images,
+                            &None,
+                            &None,
+                            &None,
+                            None,
+                        ));
+                    }
                 }
             }
         }
@@ -290,6 +360,164 @@ impl WatchfaceParams for MiBandParams {
                 ));
             }
         }
+
+        if let Some(date) = &self.date {
+            if let Some(params) = &params {
+                if let Some(month_and_day_and_year) = &date.month_and_day_and_year {
+                    if let Some(separate) = &month_and_day_and_year.separate {
+                        if let Some(value) = params.month {
+                            res.append(&mut &mut number_get_images(
+                                &separate.month,
+                                value as i32,
+                                images,
+                                &None,
+                                &None,
+                                &None,
+                                Some(2),
+                            ));
+                        }
+                        if let Some(value) = params.day {
+                            res.append(&mut &mut number_get_images(
+                                &separate.day,
+                                value as i32,
+                                images,
+                                &None,
+                                &None,
+                                &None,
+                                Some(2),
+                            ));
+                        }
+                    }
+                }
+            }
+
+            if let Some(params) = &params {
+                if let Some(day_am_pm) = &date.day_am_pm {
+                    if params.time12h {
+                        if params.am {
+                            if let Some(image_index_amen) = &day_am_pm.image_index_amen {
+                                res.push(ImageWithCoords {
+                                    x: day_am_pm.x,
+                                    y: day_am_pm.y,
+                                    image_index: ImgId(image_index_amen.0),
+                                });
+                            }
+                        } else {
+                            if let Some(image_index_pmen) = &day_am_pm.image_index_pmen {
+                                res.push(ImageWithCoords {
+                                    x: day_am_pm.x,
+                                    y: day_am_pm.y,
+                                    image_index: ImgId(image_index_pmen.0),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            if let Some(params) = &params {
+                if let Some(weekday) = params.weekday {
+                    res.append(&mut &mut image_range_get_images(
+                        &date.en_week_days,
+                        weekday,
+                        images,
+                    ));
+                }
+            }
+        }
+
+        if let Some(weather) = &self.weather {
+            if let Some(params) = &params {
+                if let Some(icon) = &weather.icon {
+                    if let Some(value) = params.weather {
+                        res.append(&mut &mut image_range_get_images(
+                            &icon.custom_icon,
+                            value,
+                            images,
+                        ));
+                    }
+                }
+
+                if let Some(temperature) = &weather.temperature {
+                    if let Some(value) = params.temperature {
+                        if let Some(current) = &temperature.current {
+                            res.append(&mut number_get_images(
+                                &current.number,
+                                value,
+                                images,
+                                &None,
+                                &current.minus_image_index,
+                                &current.suffix_image_index,
+                                None,
+                            ));
+                        }
+                    }
+
+                    if let Some(today) = &temperature.today {
+                        if let Some(separate) = &today.separate {
+                            if let Some(day) = &separate.day {
+                                if let Some(value) = params.day_temperature {
+                                    res.append(&mut number_get_images(
+                                        &day.number,
+                                        value,
+                                        images,
+                                        &None,
+                                        &day.minus_image_index,
+                                        &day.suffix_image_index,
+                                        None,
+                                    ));
+                                }
+                            }
+
+                            if let Some(night) = &separate.night {
+                                if let Some(value) = params.night_temperature {
+                                    res.append(&mut number_get_images(
+                                        &night.number,
+                                        value,
+                                        images,
+                                        &None,
+                                        &night.minus_image_index,
+                                        &night.suffix_image_index,
+                                        None,
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(battery) = &self.battery {
+            if let Some(params) = &params {
+                if let Some(battery_text) = &battery.battery_text {
+                    if let Some(value) = params.battery {
+                        res.append(&mut number_get_images(
+                            &battery_text.number,
+                            value as i32,
+                            images,
+                            &None,
+                            &None,
+                            &None,
+                            None,
+                        ));
+                    }
+                }
+
+                if let Some(battery_icon) = &battery.battery_icon {
+                    if let Some(value) = params.battery {
+                        if let Some(images_count) = battery_icon.images_count {
+                            res.append(&mut image_range_get_images(
+                                &battery.battery_icon,
+                                (value as f32 / 100. * (images_count - 1) as f32).round() as u32,
+                                images,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
         res
     }
 }
