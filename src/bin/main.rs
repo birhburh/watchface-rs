@@ -87,6 +87,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ..Default::default()
     }));
 
+    // todo: move 126, 294 somwhere to watchface or watchface args
     let mut final_image = ImageBuffer::from_pixel(126, 294, image::Rgba([0, 0, 0, 255]));
     for image in preview {
         match image.image_type {
@@ -95,7 +96,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let img = image::open(path).unwrap().into_rgba8();
                 image::imageops::overlay(&mut final_image, &img, image.x as i64, image.y as i64);
             }
-            _ => unimplemented!(),
+            ImageType::Image(image_data) => {
+                let img = ImageBuffer::from_raw(
+                    image_data.width as u32,
+                    image_data.height as u32,
+                    image_data.pixels,
+                )
+                .unwrap();
+                image::imageops::overlay(&mut final_image, &img, image.x as i64, image.y as i64);
+            }
         }
     }
     let path = format!("{output}/preview.png");

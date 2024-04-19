@@ -457,7 +457,7 @@ pub struct VectorShape {
 }
 
 #[derive(Debug, PartialEq, Default, Deserialize)]
-pub struct Color(u8, u8, u8, u8);
+pub struct Color(pub u8, pub u8, pub u8, pub u8);
 
 impl Transform for Option<Color> {
     fn transform(&mut self, params: &[Param]) {
@@ -466,12 +466,45 @@ impl Transform for Option<Color> {
             _ => panic!("First param should be number param"),
         };
 
-        *self = Some(Color(
+        let vals = [
             (*subvalue >> 24) as u8,
             (*subvalue >> 16) as u8,
             (*subvalue >> 8) as u8,
             *subvalue as u8,
-        ));
+        ];
+
+        let mut started = false;
+        let mut left = 4;
+        let mut cur = 0;
+        let mut res = Color::default();
+        for val in vals {
+            if !started && val != 0 {
+                started = true;
+            }
+            if started {
+                match cur {
+                    0 => res.0 = val,
+                    1 => res.1 = val,
+                    2 => res.2 = val,
+                    3 => res.3 = val,
+                    _ => unreachable!(),
+                }
+                left -= 1;
+                cur += 1;
+            }
+        }
+
+        while left > 0 {
+            match cur {
+                0 | 1 | 2 => (),
+                3 => res.3 = 255,
+                _ => unreachable!(),
+            }
+            left -= 1;
+            cur += 1;
+        }
+
+        *self = Some(res);
     }
 }
 
@@ -485,15 +518,15 @@ impl Serialize for Color {
         let mut started = false;
         let mut first = true;
 
-        for &value in vals.iter() {
-            if !started && value != 0 {
+        for (i, value) in vals.iter().enumerate() {
+            if !started && *value != 0 {
                 started = true;
             }
             if started {
-                if first && value <= 16 {
+                if first && *value <= 16 {
                     hex_num.push(format!("{:X}", value));
-                } else {
-                    hex_num.push(format!("{:02X}", value));
+                } else if i != 3 || *value != 255 {
+                        hex_num.push(format!("{:02X}", value));
                 }
                 first = false;
             }

@@ -1,7 +1,11 @@
 use {
-    crate::common::*, // TODO: not use star
+    crate::common::*,
     serde::{ser::SerializeSeq, Deserialize, Serialize},
-    std::fmt::Debug,
+    std::{f32::consts::PI, fmt::Debug},
+    tiny_skia::{
+        FillRule, Paint, PathBuilder, Pixmap, Stroke, Transform as Transform2,
+        BYTES_PER_PIXEL,
+    },
     watchface_rs_derive::TransformDerive,
 };
 
@@ -351,6 +355,123 @@ fn time_numbers_get_images(
     res
 }
 
+fn vector_shape_get_images(
+    vector_shape: &Option<VectorShape>,
+    param: Option<u32>,
+    total_value: f32,
+) -> Vec<ImageWithCoords> {
+    let mut res = vec![];
+    if let Some(value) = param {
+        if let Some(vector_shape) = &vector_shape {
+            if let Some(color) = &vector_shape.color {
+                if let Some(center) = &vector_shape.center {
+                    if let Some(first) = &vector_shape.shape.get(0) {
+                        let angle = (2. * PI * value as f32 / total_value - PI / 2.) * 180. / PI;
+
+                        // TODO: replace 126, 294 with sizes of watchface screen
+                        let mut pixmap = Pixmap::new(126, 294).unwrap();
+
+                        let mut paint = Paint::default();
+                        paint.set_color_rgba8(color.0, color.1, color.2, color.3);
+                        paint.anti_alias = true;
+
+                        let mut pb = PathBuilder::new();
+                        pb.move_to(first.x as f32, first.y as f32);
+
+                        for point in &vector_shape.shape[1..] {
+                            pb.line_to(point.x as f32, point.y as f32);
+                        }
+                        pb.close();
+                        let path = pb.finish().unwrap();
+
+                        let only_border = if let Some(only_border) = vector_shape.only_border {
+                            only_border
+                        } else {
+                            false
+                        };
+
+                        if only_border {
+                            let stroke = Stroke::default();
+                            pixmap.stroke_path(
+                                &path,
+                                &paint,
+                                &stroke,
+                                Transform2::from_translate(center.x as f32, center.y as f32)
+                                    .pre_rotate(angle),
+                                None,
+                            );
+                        } else {
+                            pixmap.fill_path(
+                                &path,
+                                &paint,
+                                FillRule::Winding,
+                                Transform2::from_translate(center.x as f32, center.y as f32)
+                                    .pre_rotate(angle),
+                                None,
+                            );
+                        }
+
+                        let width = pixmap.width() as u16;
+                        let height = pixmap.height() as u16;
+                        let pixels = pixmap.take();
+
+                        res.push(ImageWithCoords {
+                            x: 0,
+                            y: 0,
+                            image_type: ImageType::Image(Image {
+                                pixels,
+                                width,
+                                height,
+                                bits_per_pixel: (BYTES_PER_PIXEL * 8) as u16,
+                                pixel_format: 0,
+                            }),
+                        });
+                    }
+                }
+            }
+
+            if let Some(center_image) = &vector_shape.center_image {
+                if let Some(image_index) = &center_image.image_index {
+                    res.push(ImageWithCoords {
+                        x: center_image.x,
+                        y: center_image.y,
+                        image_type: ImageType::Id(ImgId(image_index.0)),
+                    });
+                }
+            }
+        }
+    }
+
+    res
+}
+
+fn linear_get_images(
+    linear: &Option<Linear>,
+    param: Option<u32>,
+) -> Vec<ImageWithCoords> {
+    let mut res = vec![];
+
+    if let Some(linear) = linear {
+        if let Some(start_image_index) = &linear.start_image_index {
+            if let Some(value) = param {
+                let progress = (value as f32 / 100. * (linear.segments.len() - 1) as f32)
+                    .round() as usize;
+                for i in 0..=progress {
+                    res.push(ImageWithCoords {
+                        x: linear.segments[i].x,
+                        y: linear.segments[i].y,
+                        image_type: ImageType::Id(ImgId(
+                            start_image_index.0 + i as u32,
+                        )),
+                    });
+                }
+            }
+        }
+    }
+
+    res
+}
+
 impl WatchfaceParams for MiBandParams {
     fn get_images(
         &self,
@@ -489,23 +610,12 @@ impl WatchfaceParams for MiBandParams {
 
         if let Some(heart_progress) = &self.heart_progress {
             if let Some(params) = &params {
-                if let Some(value) = params.heart_progress {
-                    if let Some(linear) = &heart_progress.linear {
-                        if let Some(start_image_index) = &linear.start_image_index {
-                            let progress = (value as f32 / 100. * linear.segments.len() as f32)
-                                .round() as usize;
-                            for i in 0..progress {
-                                res.push(ImageWithCoords {
-                                    x: linear.segments[i].x,
-                                    y: linear.segments[i].y,
-                                    image_type: ImageType::Id(ImgId(
-                                        start_image_index.0 + i as u32,
-                                    )),
-                                });
-                            }
-                        }
-                    }
+                res.append(&mut linear_get_images(
+                    &heart_progress.linear,
+                    params.heart_progress
+                ));
 
+                if let Some(value) = params.heart_progress {
                     if let Some(line_scale) = &heart_progress.line_scale {
                         if let Some(images_count) = line_scale.images_count {
                             res.append(&mut &mut image_range_get_images(
@@ -827,23 +937,12 @@ impl WatchfaceParams for MiBandParams {
 
         if let Some(steps_progress) = &self.steps_progress {
             if let Some(params) = &params {
-                if let Some(value) = params.steps_progress {
-                    if let Some(linear) = &steps_progress.linear {
-                        if let Some(start_image_index) = &linear.start_image_index {
-                            let progress = (value as f32 / 100. * linear.segments.len() as f32)
-                                .round() as usize;
-                            for i in 0..progress {
-                                res.push(ImageWithCoords {
-                                    x: linear.segments[i].x,
-                                    y: linear.segments[i].y,
-                                    image_type: ImageType::Id(ImgId(
-                                        start_image_index.0 + i as u32,
-                                    )),
-                                });
-                            }
-                        }
-                    }
 
+                res.append(&mut linear_get_images(
+                    &steps_progress.linear,
+                    params.steps_progress
+                ));
+                if let Some(value) = params.steps_progress {
                     if let Some(line_scale) = &steps_progress.line_scale {
                         if let Some(images_count) = line_scale.images_count {
                             res.append(&mut &mut image_range_get_images(
@@ -886,67 +985,30 @@ impl WatchfaceParams for MiBandParams {
                     }
                 }
 
-                if let Some(linear) = &battery.linear {
-                    if let Some(start_image_index) = &linear.start_image_index {
-                        if let Some(value) = params.battery {
-                            let progress = (value as f32 / 100. * linear.segments.len() as f32)
-                                .round() as usize;
-                            for i in 0..progress {
-                                res.push(ImageWithCoords {
-                                    x: linear.segments[i].x,
-                                    y: linear.segments[i].y,
-                                    image_type: ImageType::Id(ImgId(
-                                        start_image_index.0 + i as u32,
-                                    )),
-                                });
-                            }
-                        }
-                    }
-                }
+                res.append(&mut linear_get_images(
+                    &battery.linear,
+                    params.battery
+                ));
             }
         }
 
         if let Some(analog_dial_face) = &self.analog_dial_face {
             if let Some(params) = &params {
-                if let Some(value) = params.hours {
-                    if let Some(hours) = &analog_dial_face.hours {
-                        if let Some(center_image) = &hours.center_image {
-                            if let Some(image_index) = &center_image.image_index {
-                                res.push(ImageWithCoords {
-                                    x: center_image.x,
-                                    y: center_image.y,
-                                    image_type: ImageType::Id(ImgId(image_index.0)),
-                                });
-                            }
-                        }
-                    }
-                }
-                if let Some(value) = params.minutes {
-                    if let Some(minutes) = &analog_dial_face.minutes {
-                        if let Some(center_image) = &minutes.center_image {
-                            if let Some(image_index) = &center_image.image_index {
-                                res.push(ImageWithCoords {
-                                    x: center_image.x,
-                                    y: center_image.y,
-                                    image_type: ImageType::Id(ImgId(image_index.0)),
-                                });
-                            }
-                        }
-                    }
-                }
-                if let Some(value) = params.seconds {
-                    if let Some(seconds) = &analog_dial_face.seconds {
-                        if let Some(center_image) = &seconds.center_image {
-                            if let Some(image_index) = &center_image.image_index {
-                                res.push(ImageWithCoords {
-                                    x: center_image.x,
-                                    y: center_image.y,
-                                    image_type: ImageType::Id(ImgId(image_index.0)),
-                                });
-                            }
-                        }
-                    }
-                }
+                res.append(&mut vector_shape_get_images(
+                    &analog_dial_face.hours,
+                    params.hours,
+                    12.,
+                ));
+                res.append(&mut vector_shape_get_images(
+                    &analog_dial_face.minutes,
+                    params.minutes,
+                    60.,
+                ));
+                res.append(&mut vector_shape_get_images(
+                    &analog_dial_face.seconds,
+                    params.seconds,
+                    60.,
+                ));
             }
         }
 
@@ -1236,6 +1298,12 @@ pub struct DayAmPm {
     #[wfrs_id(6)]
     #[serde(rename = "ImageIndexPMEN", skip_serializing_if = "Option::is_none")]
     pub image_index_pmen: Option<ImgId>,
+    #[wfrs_id(7)]
+    #[serde(rename = "X_EN", skip_serializing_if = "Option::is_none")]
+    pub x_en: Option<u32>,
+    #[wfrs_id(8)]
+    #[serde(rename = "Y_EN", skip_serializing_if = "Option::is_none")]
+    pub y_en: Option<u32>
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
@@ -1306,6 +1374,9 @@ pub struct Today {
     #[wfrs_id(1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub separate: Option<TemperatureSeparate>,
+    #[wfrs_id(2)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub one_line: Option<TodayOneLine>,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
@@ -1317,6 +1388,26 @@ pub struct TemperatureSeparate {
     #[wfrs_id(2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub night: Option<TemperatureType>,
+}
+
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
+#[serde(rename_all = "PascalCase")]
+pub struct TodayOneLine {
+    #[wfrs_id(1)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub number: Option<NumberInRect>,
+    #[wfrs_id(2)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minus_image_index: Option<ImgId>,
+    #[wfrs_id(3)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delimiter_image_index: Option<ImgId>,
+    #[wfrs_id(4)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub append_suffix_to_all: Option<bool>,
+    #[wfrs_id(5)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub suffix_image_index: Option<ImgId>,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
