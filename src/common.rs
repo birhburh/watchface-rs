@@ -42,10 +42,16 @@ pub trait WatchfaceParams {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum ImageType {
+    Id(ImgId),
+    Image(Image),
+}
+
+#[derive(Debug, PartialEq)]
 pub struct ImageWithCoords {
     pub x: i32,
     pub y: i32,
-    pub image_index: ImgId,
+    pub image_type: ImageType,
 }
 
 #[derive(Debug, Default)]
@@ -72,7 +78,9 @@ pub struct PreviewParams {
     pub temperature: Option<i32>,
     pub day_temperature: Option<i32>,
     pub night_temperature: Option<i32>,
+    pub humidity: Option<i32>,
     pub wind: Option<i32>,
+    pub uv: Option<i32>,
 
     pub battery: Option<u32>,
     pub do_not_disturb: bool,

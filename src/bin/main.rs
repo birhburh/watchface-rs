@@ -5,7 +5,7 @@ use {
         fs::{self, File},
         io::{BufWriter, ErrorKind},
     },
-    watchface_rs::{parse_watch_face_bin, MiBandParams, PreviewParams, Watchface},
+    watchface_rs::{parse_watch_face_bin, ImageType, MiBandParams, PreviewParams, Watchface},
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -71,7 +71,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         temperature: Some(26),
         day_temperature: Some(43),
         night_temperature: Some(-10),
+        humidity: Some(98),
         wind: Some(12),
+        uv: Some(10),
 
         battery: Some(64),
         do_not_disturb: true,
@@ -87,9 +89,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut final_image = ImageBuffer::from_pixel(126, 294, image::Rgba([0, 0, 0, 255]));
     for image in preview {
-        let path = format!("{output}/{}.png", image.image_index.0);
-        let img = image::open(path).unwrap().into_rgba8();
-        image::imageops::overlay(&mut final_image, &img, image.x as i64, image.y as i64);
+        match image.image_type {
+            ImageType::Id(id) => {
+                let path = format!("{output}/{}.png", id.0);
+                let img = image::open(path).unwrap().into_rgba8();
+                image::imageops::overlay(&mut final_image, &img, image.x as i64, image.y as i64);
+            }
+            _ => unimplemented!(),
+        }
     }
     let path = format!("{output}/preview.png");
     final_image.save(path).expect("Failed to save final image");

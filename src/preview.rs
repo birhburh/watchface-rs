@@ -31,7 +31,7 @@ mod tests {
             vec![ImageWithCoords {
                 x: 1,
                 y: 128,
-                image_index: ImgId(0),
+                image_type: ImageType::Id(ImgId(0)),
             },]
         )
     }
@@ -150,27 +150,27 @@ mod tests {
                 ImageWithCoords {
                     x: 1,
                     y: 258,
-                    image_index: ImgId(0),
+                    image_type: ImageType::Id(ImgId(0)),
                 }, // background
                 ImageWithCoords {
                     x: 10,
                     y: 20,
-                    image_index: ImgId(2),
+                    image_type: ImageType::Id(ImgId(2)),
                 }, // hours first digit 1
                 ImageWithCoords {
                     x: 15,
                     y: 20,
-                    image_index: ImgId(2),
+                    image_type: ImageType::Id(ImgId(2)),
                 }, // hours second digit 1
                 ImageWithCoords {
                     x: 10,
                     y: 40,
-                    image_index: ImgId(1),
+                    image_type: ImageType::Id(ImgId(1)),
                 }, // minutes first digit 0
                 ImageWithCoords {
                     x: 15,
                     y: 40,
-                    image_index: ImgId(7),
+                    image_type: ImageType::Id(ImgId(7)),
                 }, // minutes second digit 6
             ]
         )
@@ -275,27 +275,27 @@ mod tests {
                 ImageWithCoords {
                     x: 1,
                     y: 39,
-                    image_index: ImgId(0),
+                    image_type: ImageType::Id(ImgId(0)),
                 }, // background
                 ImageWithCoords {
                     x: 10,
                     y: 31,
-                    image_index: ImgId(2),
+                    image_type: ImageType::Id(ImgId(2)),
                 }, // hours first digit 1
                 ImageWithCoords {
                     x: 16,
                     y: 31,
-                    image_index: ImgId(3),
+                    image_type: ImageType::Id(ImgId(3)),
                 }, // hours second digit 1
                 ImageWithCoords {
                     x: 22,
                     y: 31,
-                    image_index: ImgId(9),
+                    image_type: ImageType::Id(ImgId(9)),
                 }, // minutes first digit 0
                 ImageWithCoords {
                     x: 28,
                     y: 31,
-                    image_index: ImgId(5),
+                    image_type: ImageType::Id(ImgId(5)),
                 }, // minutes second digit 6
             ]
         )
@@ -400,27 +400,27 @@ mod tests {
                 ImageWithCoords {
                     x: 16,
                     y: 79,
-                    image_index: ImgId(0),
+                    image_type: ImageType::Id(ImgId(0)),
                 }, // background
                 ImageWithCoords {
                     x: 44,
                     y: 20,
-                    image_index: ImgId(2),
+                    image_type: ImageType::Id(ImgId(2)),
                 }, // hours first digit 1
                 ImageWithCoords {
                     x: 50,
                     y: 20,
-                    image_index: ImgId(3),
+                    image_type: ImageType::Id(ImgId(3)),
                 }, // hours second digit 1
                 ImageWithCoords {
                     x: 56,
                     y: 20,
-                    image_index: ImgId(9),
+                    image_type: ImageType::Id(ImgId(9)),
                 }, // minutes first digit 0
                 ImageWithCoords {
                     x: 62,
                     y: 20,
-                    image_index: ImgId(5),
+                    image_type: ImageType::Id(ImgId(5)),
                 }, // minutes second digit 6
             ]
         )

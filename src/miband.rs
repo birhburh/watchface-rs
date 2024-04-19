@@ -100,7 +100,7 @@ fn status_image_get_images(
                     res.push(ImageWithCoords {
                         x: coordinates.x,
                         y: coordinates.y,
-                        image_index: ImgId(on_image_index.0),
+                        image_type: ImageType::Id(ImgId(on_image_index.0)),
                     });
                 }
             }
@@ -110,7 +110,7 @@ fn status_image_get_images(
                     res.push(ImageWithCoords {
                         x: coordinates.x,
                         y: coordinates.y,
-                        image_index: ImgId(off_image_index.0),
+                        image_type: ImageType::Id(ImgId(off_image_index.0)),
                     });
                 }
             }
@@ -160,7 +160,7 @@ fn text_get_images(
         res.push(ImageWithCoords {
             x,
             y,
-            image_index: ImgId(*element_image_id),
+            image_type: ImageType::Id(ImgId(*element_image_id)),
         });
 
         x += image.width as i32 + number.spacing_x;
@@ -172,7 +172,6 @@ fn text_get_images(
 fn number_get_image_ids(
     number: &NumberInRect,
     param: f32,
-    images: &Vec<Image>,
     decimal_point_image_index: &Option<ImgId>,
     minus_image_index: &Option<ImgId>,
     min_width: Option<usize>,
@@ -246,7 +245,6 @@ fn number_get_images(
         image_ids.append(&mut number_get_image_ids(
             number,
             param,
-            images,
             decimal_point_image_index,
             minus_image_index,
             min_width,
@@ -281,7 +279,6 @@ fn numbers_with_delimiters_get_images(
             image_ids.append(&mut number_get_image_ids(
                 number,
                 *param,
-                images,
                 &None,
                 minus_image_index,
                 min_width,
@@ -321,7 +318,7 @@ fn image_range_get_images(
             res.push(ImageWithCoords {
                 x: image_range.x,
                 y: image_range.y,
-                image_index: ImgId(image_index.0 + value),
+                image_type: ImageType::Id(ImgId(image_index.0 + value)),
             })
         }
     }
@@ -367,7 +364,7 @@ impl WatchfaceParams for MiBandParams {
                     res.push(ImageWithCoords {
                         x: image.x,
                         y: image.y,
-                        image_index: ImgId(image_index.0),
+                        image_type: ImageType::Id(ImgId(image_index.0)),
                     })
                 }
             }
@@ -395,7 +392,7 @@ impl WatchfaceParams for MiBandParams {
                         res.push(ImageWithCoords {
                             x: delimiter_image.x,
                             y: delimiter_image.y,
-                            image_index: ImgId(image_index.0),
+                            image_type: ImageType::Id(ImgId(image_index.0)),
                         })
                     }
                 }
@@ -404,7 +401,7 @@ impl WatchfaceParams for MiBandParams {
                         res.push(ImageWithCoords {
                             x: time_delimiter_image.x,
                             y: time_delimiter_image.y,
-                            image_index: ImgId(image_index.0),
+                            image_type: ImageType::Id(ImgId(image_index.0)),
                         })
                     }
                 }
@@ -501,7 +498,9 @@ impl WatchfaceParams for MiBandParams {
                                 res.push(ImageWithCoords {
                                     x: linear.segments[i].x,
                                     y: linear.segments[i].y,
-                                    image_index: ImgId(start_image_index.0 + i as u32),
+                                    image_type: ImageType::Id(ImgId(
+                                        start_image_index.0 + i as u32,
+                                    )),
                                 });
                             }
                         }
@@ -538,7 +537,7 @@ impl WatchfaceParams for MiBandParams {
                             res.push(ImageWithCoords {
                                 x: day.x,
                                 y: day.y,
-                                image_index: ImgId(image_index.0),
+                                image_type: ImageType::Id(ImgId(image_index.0)),
                             })
                         }
                     }
@@ -554,7 +553,7 @@ impl WatchfaceParams for MiBandParams {
                             res.push(ImageWithCoords {
                                 x: on_image.x,
                                 y: on_image.y,
-                                image_index: ImgId(image_index.0),
+                                image_type: ImageType::Id(ImgId(image_index.0)),
                             });
                         }
                     }
@@ -564,7 +563,7 @@ impl WatchfaceParams for MiBandParams {
                             res.push(ImageWithCoords {
                                 x: off_image.x,
                                 y: off_image.y,
-                                image_index: ImgId(image_index.0),
+                                image_type: ImageType::Id(ImgId(image_index.0)),
                             });
                         }
                     }
@@ -669,7 +668,7 @@ impl WatchfaceParams for MiBandParams {
                                 res.push(ImageWithCoords {
                                     x: day_am_pm.x,
                                     y: day_am_pm.y,
-                                    image_index: ImgId(image_index_amen.0),
+                                    image_type: ImageType::Id(ImgId(image_index_amen.0)),
                                 });
                             }
                         } else {
@@ -677,7 +676,7 @@ impl WatchfaceParams for MiBandParams {
                                 res.push(ImageWithCoords {
                                     x: day_am_pm.x,
                                     y: day_am_pm.y,
-                                    image_index: ImgId(image_index_pmen.0),
+                                    image_type: ImageType::Id(ImgId(image_index_pmen.0)),
                                 });
                             }
                         }
@@ -759,6 +758,30 @@ impl WatchfaceParams for MiBandParams {
                     }
                 }
 
+                if let Some(humidity) = &weather.humidity {
+                    if let Some(value) = params.humidity {
+                        res.append(&mut number_get_images(
+                            &humidity.number,
+                            value as f32,
+                            images,
+                            &None,
+                            &None,
+                            &None,
+                            &humidity.suffix_image_index,
+                            None,
+                        ));
+                        if let Some(image_pos_suffix) = &humidity.image_pos_suffix {
+                            if let Some(image_index) = &image_pos_suffix.image_index {
+                                res.push(ImageWithCoords {
+                                    x: image_pos_suffix.x,
+                                    y: image_pos_suffix.y,
+                                    image_type: ImageType::Id(ImgId(image_index.0)),
+                                });
+                            }
+                        }
+                    }
+                }
+
                 if let Some(wind) = &weather.wind {
                     if let Some(value) = params.wind {
                         res.append(&mut number_get_images(
@@ -776,9 +799,26 @@ impl WatchfaceParams for MiBandParams {
                                 res.push(ImageWithCoords {
                                     x: image_pos_suffix_en.x,
                                     y: image_pos_suffix_en.y,
-                                    image_index: ImgId(image_index.0),
+                                    image_type: ImageType::Id(ImgId(image_index.0)),
                                 });
                             }
+                        }
+                    }
+                }
+
+                if let Some(uv_index) = &weather.uv_index {
+                    if let Some(value) = params.uv {
+                        if let Some(uv) = &uv_index.uv {
+                            res.append(&mut number_get_images(
+                                &uv.number,
+                                value as f32,
+                                images,
+                                &None,
+                                &None,
+                                &None,
+                                &uv.suffix_image_index,
+                                None,
+                            ));
                         }
                     }
                 }
@@ -796,7 +836,9 @@ impl WatchfaceParams for MiBandParams {
                                 res.push(ImageWithCoords {
                                     x: linear.segments[i].x,
                                     y: linear.segments[i].y,
-                                    image_index: ImgId(start_image_index.0 + i as u32),
+                                    image_type: ImageType::Id(ImgId(
+                                        start_image_index.0 + i as u32,
+                                    )),
                                 });
                             }
                         }
@@ -853,7 +895,53 @@ impl WatchfaceParams for MiBandParams {
                                 res.push(ImageWithCoords {
                                     x: linear.segments[i].x,
                                     y: linear.segments[i].y,
-                                    image_index: ImgId(start_image_index.0 + i as u32),
+                                    image_type: ImageType::Id(ImgId(
+                                        start_image_index.0 + i as u32,
+                                    )),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(analog_dial_face) = &self.analog_dial_face {
+            if let Some(params) = &params {
+                if let Some(value) = params.hours {
+                    if let Some(hours) = &analog_dial_face.hours {
+                        if let Some(center_image) = &hours.center_image {
+                            if let Some(image_index) = &center_image.image_index {
+                                res.push(ImageWithCoords {
+                                    x: center_image.x,
+                                    y: center_image.y,
+                                    image_type: ImageType::Id(ImgId(image_index.0)),
+                                });
+                            }
+                        }
+                    }
+                }
+                if let Some(value) = params.minutes {
+                    if let Some(minutes) = &analog_dial_face.minutes {
+                        if let Some(center_image) = &minutes.center_image {
+                            if let Some(image_index) = &center_image.image_index {
+                                res.push(ImageWithCoords {
+                                    x: center_image.x,
+                                    y: center_image.y,
+                                    image_type: ImageType::Id(ImgId(image_index.0)),
+                                });
+                            }
+                        }
+                    }
+                }
+                if let Some(value) = params.seconds {
+                    if let Some(seconds) = &analog_dial_face.seconds {
+                        if let Some(center_image) = &seconds.center_image {
+                            if let Some(image_index) = &center_image.image_index {
+                                res.push(ImageWithCoords {
+                                    x: center_image.x,
+                                    y: center_image.y,
+                                    image_type: ImageType::Id(ImgId(image_index.0)),
                                 });
                             }
                         }

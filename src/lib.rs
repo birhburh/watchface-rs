@@ -9,6 +9,7 @@ use {
     winnow::{stream::Located, PResult},
 };
 
+pub use common::ImageType;
 pub use common::PreviewParams;
 pub use common::Watchface;
 pub use miband::MiBandParams;
