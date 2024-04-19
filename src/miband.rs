@@ -79,7 +79,7 @@ fn compute_position_with_aligment(
     /*if (alignment & 0x08)*/
     {
         // center align (default)
-        (lower_bound + upper_bound) / 2 - element_size / 2
+        ((lower_bound + upper_bound) as f32 / 2. - element_size as f32 / 2.).round() as i32
     };
 
     // don't allow to go lower than the lower bound
@@ -120,6 +120,110 @@ fn status_image_get_images(
     res
 }
 
+fn text_get_images(
+    number: &NumberInRect,
+    image_ids: Vec<u32>,
+    images: &Vec<Image>,
+) -> Vec<ImageWithCoords> {
+    let mut res = vec![];
+
+    // compute width of text to display
+    let text_width = image_ids
+        .iter()
+        .map(|img_id| images[*img_id as usize].width)
+        .reduce(|a, b| ((a + b) as i32 + number.spacing_x).try_into().unwrap())
+        .unwrap_or_default();
+
+    let aligment = match &number.alignment {
+        Alignment::Valid(valid) => *valid as u32,
+        Alignment::Unknown => 0,
+    };
+
+    // compute coordinates of the left of the first character
+    let mut x = compute_position_with_aligment(
+        number.top_left_x,
+        number.bottom_right_x,
+        text_width.try_into().unwrap(),
+        aligment,
+    );
+
+    // Add all characters
+    for (i, element_image_id) in image_ids.iter().enumerate() {
+        let image = &images[*element_image_id as usize];
+        let y = compute_position_with_aligment(
+            number.top_left_y,
+            number.bottom_right_y,
+            image.height as i32,
+            aligment >> 3,
+        ) + i as i32 * number.spacing_y;
+
+        res.push(ImageWithCoords {
+            x,
+            y,
+            image_index: ImgId(*element_image_id),
+        });
+
+        x += image.width as i32 + number.spacing_x;
+    }
+
+    res
+}
+
+fn number_get_image_ids(
+    number: &NumberInRect,
+    param: f32,
+    images: &Vec<Image>,
+    decimal_point_image_index: &Option<ImgId>,
+    minus_image_index: &Option<ImgId>,
+    min_width: Option<usize>,
+) -> Vec<u32> {
+    let mut image_ids = vec![];
+
+    if param < 0.0 {
+        if let Some(minus_image_index) = minus_image_index {
+            image_ids.push(minus_image_index.0);
+        }
+    }
+
+    if let Some(image_index) = &number.image_index {
+        let mut int_part = param.abs().trunc() as u32;
+        let mut int_part_image_ids = vec![];
+        while int_part != 0 {
+            int_part_image_ids.push(image_index.0 + int_part % 10);
+            int_part /= 10;
+        }
+        if let Some(min_width) = min_width {
+            while int_part_image_ids.len() < min_width {
+                int_part_image_ids.push(image_index.0 + 0);
+            }
+        }
+        if int_part_image_ids.is_empty() {
+            int_part_image_ids.push(image_index.0 + 0);
+        }
+        int_part_image_ids.reverse();
+        image_ids.append(&mut int_part_image_ids);
+
+        let mut fract = (param.fract() * 100.0).round() as u32;
+        let mut fract_image_ids = vec![];
+        if let Some(decimal_point_image_index) = decimal_point_image_index {
+            if int_part_image_ids.len() < 3 {
+                image_ids.push(decimal_point_image_index.0);
+
+                while fract != 0 {
+                    fract_image_ids.push(image_index.0 + fract % 10);
+                    fract /= 10;
+                }
+                while fract_image_ids.len() < 2 {
+                    fract_image_ids.push(image_index.0 + 0);
+                }
+                fract_image_ids.reverse();
+                image_ids.append(&mut fract_image_ids);
+            }
+        }
+    }
+    image_ids
+}
+
 fn number_get_images(
     number: &Option<NumberInRect>,
     param: f32,
@@ -133,183 +237,75 @@ fn number_get_images(
     let mut res = vec![];
 
     if let Some(number) = number {
-        if let Some(image_index) = &number.image_index {
-            let mut int_part = param.abs().trunc() as u32;
-            let mut int_part_image_ids = vec![];
-            while int_part != 0 {
-                int_part_image_ids.push(int_part % 10);
-                int_part /= 10;
-            }
-            if let Some(min_width) = min_width {
-                while int_part_image_ids.len() < min_width {
-                    int_part_image_ids.push(0);
-                }
-            }
-            int_part_image_ids.reverse();
+        let mut image_ids = vec![];
 
-            let fract_part_image_id = if param.fract() > 0.0 {
-                ((param.fract() * 10.) as usize) % 10
-            } else {
-                Default::default()
-            };
-
-            // compute width of text to display
-            let mut text_width = int_part_image_ids
-                .iter()
-                .map(|img_id| images[(image_index.0 + *img_id) as usize].width)
-                .reduce(|a, b| ((a + b) as i32 + number.spacing_x).try_into().unwrap())
-                .unwrap_or_default();
-
-            let aligment = match &number.alignment {
-                Alignment::Valid(valid) => *valid as u32,
-                Alignment::Unknown => 0,
-            };
-
-            if let Some(prefix_image_index) = prefix_image_index {
-                text_width += <i32 as TryInto<u16>>::try_into(
-                    images[(prefix_image_index.0) as usize].width as i32 + number.spacing_x,
-                )
-                .unwrap();
-            }
-            if param < 0.0 {
-                if let Some(minus_image_index) = minus_image_index {
-                    text_width += <i32 as TryInto<u16>>::try_into(
-                        images[(minus_image_index.0) as usize].width as i32 + number.spacing_x,
-                    )
-                    .unwrap();
-                }
-            }
-            if param.fract() > 0.0 {
-                if let Some(decimal_point_image_index) = decimal_point_image_index {
-                    text_width += <i32 as TryInto<u16>>::try_into(
-                        images[(decimal_point_image_index.0) as usize].width as i32
-                            + number.spacing_x,
-                    )
-                    .unwrap();
-                    text_width += <i32 as TryInto<u16>>::try_into(
-                        images[image_index.0 as usize + fract_part_image_id].width as i32 + number.spacing_x,
-                    )
-                    .unwrap();
-                }
-            }
-            if let Some(suffix_image_index) = suffix_image_index {
-                text_width += <i32 as TryInto<u16>>::try_into(
-                    images[(suffix_image_index.0) as usize].width as i32 + number.spacing_x,
-                )
-                .unwrap();
-            }
-
-            // compute coordinates of the left of the first character
-            let mut x = compute_position_with_aligment(
-                number.top_left_x,
-                number.bottom_right_x,
-                text_width.try_into().unwrap(),
-                aligment,
-            );
-
-            let mut off = 0;
-
-            if let Some(prefix_image_index) = prefix_image_index {
-                let image = &images[(prefix_image_index.0) as usize];
-                res.push(ImageWithCoords {
-                    x,
-                    y: compute_position_with_aligment(
-                        number.top_left_y,
-                        number.bottom_right_y,
-                        image.height as i32,
-                        aligment >> 3,
-                    ) + number.spacing_y,
-                    image_index: ImgId(prefix_image_index.0),
-                });
-                off += 1;
-                x += image.width as i32 + number.spacing_x;
-            }
-
-            if param < 0.0 {
-                if let Some(minus_image_index) = minus_image_index {
-                    let image = &images[(minus_image_index.0) as usize];
-                    res.push(ImageWithCoords {
-                        x,
-                        y: compute_position_with_aligment(
-                            number.top_left_y,
-                            number.bottom_right_y,
-                            image.height as i32,
-                            aligment >> 3,
-                        ) + number.spacing_y,
-                        image_index: ImgId(minus_image_index.0),
-                    });
-                    off += 1;
-                    x += image.width as i32 + number.spacing_x;
-                }
-            }
-
-            // Add all characters
-            for element_image_id in int_part_image_ids {
-                let image = &images[(image_index.0 + element_image_id) as usize];
-                res.push(ImageWithCoords {
-                    x,
-                    y: compute_position_with_aligment(
-                        number.top_left_y,
-                        number.bottom_right_y,
-                        image.height as i32,
-                        aligment >> 3,
-                    ) + off * number.spacing_y,
-                    image_index: ImgId(image_index.0 + element_image_id),
-                });
-
-                off += 1;
-                x += image.width as i32 + number.spacing_x;
-            }
-
-            if param.fract() > 0.0 {
-                if let Some(decimal_point_image_index) = decimal_point_image_index {
-                    let image = &images[(decimal_point_image_index.0) as usize];
-                    res.push(ImageWithCoords {
-                        x,
-                        y: compute_position_with_aligment(
-                            number.top_left_y,
-                            number.bottom_right_y,
-                            image.height as i32,
-                            aligment >> 3,
-                        ) + off * number.spacing_y,
-                        image_index: ImgId(decimal_point_image_index.0),
-                    });
-
-                    off += 1;
-                    x += image.width as i32 + number.spacing_x;
-
-                    let image = &images[image_index.0 as usize + fract_part_image_id];
-                    res.push(ImageWithCoords {
-                        x,
-                        y: compute_position_with_aligment(
-                            number.top_left_y,
-                            number.bottom_right_y,
-                            image.height as i32,
-                            aligment >> 3,
-                        ) + off * number.spacing_y,
-                        image_index: ImgId(image_index.0 + fract_part_image_id as u32),
-                    });
-
-                    x += image.width as i32 + number.spacing_x;
-                }
-            }
-
-            if let Some(suffix_image_index) = suffix_image_index {
-                let image = &images[(suffix_image_index.0) as usize];
-                res.push(ImageWithCoords {
-                    x,
-                    y: compute_position_with_aligment(
-                        number.top_left_y,
-                        number.bottom_right_y,
-                        image.height as i32,
-                        aligment >> 3,
-                    ) + number.spacing_y,
-                    image_index: ImgId(suffix_image_index.0),
-                });
-            }
+        if let Some(prefix_image_index) = prefix_image_index {
+            image_ids.push(prefix_image_index.0);
         }
+
+        image_ids.append(&mut number_get_image_ids(
+            number,
+            param,
+            images,
+            decimal_point_image_index,
+            minus_image_index,
+            min_width,
+        ));
+
+        if let Some(suffix_image_index) = suffix_image_index {
+            image_ids.push(suffix_image_index.0);
+        }
+
+        res.append(&mut text_get_images(number, image_ids, images))
     }
 
+    res
+}
+
+fn numbers_with_delimiters_get_images(
+    number: &Option<NumberInRect>,
+    params: &[f32],
+    images: &Vec<Image>,
+    minus_image_index: &Option<ImgId>,
+    delimiter_image_index: &Option<ImgId>,
+    suffix_image_index: &Option<ImgId>,
+    append_suffix_to_all: bool,
+    min_width: Option<usize>,
+) -> Vec<ImageWithCoords> {
+    let mut res = vec![];
+
+    if let Some(number) = number {
+        let mut image_ids = vec![];
+
+        for (i, param) in params.iter().enumerate() {
+            image_ids.append(&mut number_get_image_ids(
+                number,
+                *param,
+                images,
+                &None,
+                minus_image_index,
+                min_width,
+            ));
+
+            if let Some(suffix_image_index) = suffix_image_index {
+                if append_suffix_to_all {
+                    image_ids.push(suffix_image_index.0);
+                }
+            }
+
+            if let Some(delimiter_image_index) = delimiter_image_index {
+                if i != params.len() - 1 {
+                    image_ids.push(delimiter_image_index.0);
+                }
+            }
+        }
+
+        if let Some(suffix_image_index) = suffix_image_index {
+            image_ids.push(suffix_image_index.0);
+        }
+
+        res.append(&mut text_get_images(number, image_ids, images))
+    }
     res
 }
 
@@ -389,6 +385,29 @@ impl WatchfaceParams for MiBandParams {
                     params.minutes,
                     images,
                 ));
+                res.append(&mut &mut time_numbers_get_images(
+                    &time.seconds,
+                    params.seconds,
+                    images,
+                ));
+                if let Some(delimiter_image) = &time.delimiter_image {
+                    if let Some(image_index) = &delimiter_image.image_index {
+                        res.push(ImageWithCoords {
+                            x: delimiter_image.x,
+                            y: delimiter_image.y,
+                            image_index: ImgId(image_index.0),
+                        })
+                    }
+                }
+                if let Some(time_delimiter_image) = &time.time_delimiter_image {
+                    if let Some(image_index) = &time_delimiter_image.image_index {
+                        res.push(ImageWithCoords {
+                            x: time_delimiter_image.x,
+                            y: time_delimiter_image.y,
+                            image_index: ImgId(image_index.0),
+                        })
+                    }
+                }
             }
         }
 
@@ -403,7 +422,7 @@ impl WatchfaceParams for MiBandParams {
                             &steps.prefix_image_index,
                             &None,
                             &None,
-                            &None,
+                            &steps.suffix_image_index,
                             None,
                         ));
                     }
@@ -418,7 +437,7 @@ impl WatchfaceParams for MiBandParams {
                             &pulse.prefix_image_index,
                             &None,
                             &None,
-                            &None,
+                            &pulse.suffix_image_index,
                             None,
                         ));
                     }
@@ -450,6 +469,117 @@ impl WatchfaceParams for MiBandParams {
                             &None,
                             &calories.suffix_image_index,
                             None,
+                        ));
+                    }
+                }
+
+                if let Some(pai) = &activity.pai {
+                    if let Some(value) = params.pai {
+                        res.append(&mut &mut number_get_images(
+                            &pai.number,
+                            value as f32,
+                            images,
+                            &None,
+                            &None,
+                            &None,
+                            &None,
+                            None,
+                        ));
+                    }
+                }
+            }
+        }
+
+        if let Some(heart_progress) = &self.heart_progress {
+            if let Some(params) = &params {
+                if let Some(value) = params.heart_progress {
+                    if let Some(linear) = &heart_progress.linear {
+                        if let Some(start_image_index) = &linear.start_image_index {
+                            let progress = (value as f32 / 100. * linear.segments.len() as f32)
+                                .round() as usize;
+                            for i in 0..progress {
+                                res.push(ImageWithCoords {
+                                    x: linear.segments[i].x,
+                                    y: linear.segments[i].y,
+                                    image_index: ImgId(start_image_index.0 + i as u32),
+                                });
+                            }
+                        }
+                    }
+
+                    if let Some(line_scale) = &heart_progress.line_scale {
+                        if let Some(images_count) = line_scale.images_count {
+                            res.append(&mut &mut image_range_get_images(
+                                &heart_progress.line_scale,
+                                (value as f32 / 100. * (images_count - 1) as f32).round() as u32,
+                                images,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(week_days_icons) = &self.week_days_icons {
+            if let Some(params) = &params {
+                if let Some(value) = params.weekday {
+                    let day = match value {
+                        0 => &week_days_icons.monday,
+                        1 => &week_days_icons.tuesday,
+                        2 => &week_days_icons.wednesday,
+                        3 => &week_days_icons.thursday,
+                        4 => &week_days_icons.friday,
+                        5 => &week_days_icons.saturday,
+                        6 => &week_days_icons.sunday,
+                        _ => unreachable!(),
+                    };
+                    if let Some(day) = day {
+                        if let Some(image_index) = &day.image_index {
+                            res.push(ImageWithCoords {
+                                x: day.x,
+                                y: day.y,
+                                image_index: ImgId(image_index.0),
+                            })
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(alarm) = &self.alarm {
+            if let Some(params) = &params {
+                if params.alarm_on {
+                    if let Some(on_image) = &alarm.on_image {
+                        if let Some(image_index) = &on_image.image_index {
+                            res.push(ImageWithCoords {
+                                x: on_image.x,
+                                y: on_image.y,
+                                image_index: ImgId(image_index.0),
+                            });
+                        }
+                    }
+                } else {
+                    if let Some(off_image) = &alarm.off_image {
+                        if let Some(image_index) = &off_image.image_index {
+                            res.push(ImageWithCoords {
+                                x: off_image.x,
+                                y: off_image.y,
+                                image_index: ImgId(image_index.0),
+                            });
+                        }
+                    }
+                }
+                if let Some(alarm_hours) = params.alarm_hours {
+                    if let Some(alarm_minutes) = params.alarm_minutes {
+                        res.append(&mut numbers_with_delimiters_get_images(
+                            &alarm.number,
+                            &vec![alarm_hours as f32, alarm_minutes as f32],
+                            images,
+                            &None,
+                            &alarm.delimiter_image_index,
+                            &None,
+                            false,
+                            Some(2),
                         ));
                     }
                 }
@@ -491,6 +621,12 @@ impl WatchfaceParams for MiBandParams {
                                 &None,
                                 Some(2),
                             ));
+
+                            res.append(&mut image_range_get_images(
+                                &separate.months_en,
+                                value - 1,
+                                images,
+                            ));
                         }
                         if let Some(value) = params.day {
                             res.append(&mut &mut number_get_images(
@@ -503,6 +639,23 @@ impl WatchfaceParams for MiBandParams {
                                 &None,
                                 Some(2),
                             ));
+                        }
+                    }
+
+                    if let Some(one_line) = &month_and_day_and_year.one_line {
+                        if let Some(month) = params.month {
+                            if let Some(day) = params.day {
+                                res.append(&mut numbers_with_delimiters_get_images(
+                                    &one_line.number,
+                                    &vec![month as f32, day as f32],
+                                    images,
+                                    &None,
+                                    &one_line.delimiter_image_index,
+                                    &None,
+                                    false,
+                                    Some(2),
+                                ));
+                            }
                         }
                     }
                 }
@@ -605,6 +758,60 @@ impl WatchfaceParams for MiBandParams {
                         }
                     }
                 }
+
+                if let Some(wind) = &weather.wind {
+                    if let Some(value) = params.wind {
+                        res.append(&mut number_get_images(
+                            &wind.number,
+                            value as f32,
+                            images,
+                            &None,
+                            &None,
+                            &None,
+                            &wind.suffix_image_index_en,
+                            None,
+                        ));
+                        if let Some(image_pos_suffix_en) = &wind.image_pos_suffix_en {
+                            if let Some(image_index) = &image_pos_suffix_en.image_index {
+                                res.push(ImageWithCoords {
+                                    x: image_pos_suffix_en.x,
+                                    y: image_pos_suffix_en.y,
+                                    image_index: ImgId(image_index.0),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(steps_progress) = &self.steps_progress {
+            if let Some(params) = &params {
+                if let Some(value) = params.steps_progress {
+                    if let Some(linear) = &steps_progress.linear {
+                        if let Some(start_image_index) = &linear.start_image_index {
+                            let progress = (value as f32 / 100. * linear.segments.len() as f32)
+                                .round() as usize;
+                            for i in 0..progress {
+                                res.push(ImageWithCoords {
+                                    x: linear.segments[i].x,
+                                    y: linear.segments[i].y,
+                                    image_index: ImgId(start_image_index.0 + i as u32),
+                                });
+                            }
+                        }
+                    }
+
+                    if let Some(line_scale) = &steps_progress.line_scale {
+                        if let Some(images_count) = line_scale.images_count {
+                            res.append(&mut &mut image_range_get_images(
+                                &steps_progress.line_scale,
+                                (value as f32 / 100. * (images_count - 1) as f32).round() as u32,
+                                images,
+                            ));
+                        }
+                    }
+                }
             }
         }
 
@@ -636,6 +843,56 @@ impl WatchfaceParams for MiBandParams {
                         }
                     }
                 }
+
+                if let Some(linear) = &battery.linear {
+                    if let Some(start_image_index) = &linear.start_image_index {
+                        if let Some(value) = params.battery {
+                            let progress = (value as f32 / 100. * linear.segments.len() as f32)
+                                .round() as usize;
+                            for i in 0..progress {
+                                res.push(ImageWithCoords {
+                                    x: linear.segments[i].x,
+                                    y: linear.segments[i].y,
+                                    image_index: ImgId(start_image_index.0 + i as u32),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(other) = &self.other {
+            if let Some(params) = &params {
+                if let Some(value) = params.animation {
+                    for animation in &other.animation.0 {
+                        res.append(&mut &mut image_range_get_images(
+                            &animation.animation_images,
+                            value,
+                            images,
+                        ));
+                    }
+                }
+            }
+        }
+
+        if let Some(status) = &self.status2 {
+            if let Some(params) = &params {
+                res.append(&mut status_image_get_images(
+                    &status.do_not_disturb,
+                    params.do_not_disturb,
+                    images,
+                ));
+                res.append(&mut status_image_get_images(
+                    &status.lock,
+                    params.lock,
+                    images,
+                ));
+                res.append(&mut status_image_get_images(
+                    &status.bluetooth,
+                    params.bluetooth,
+                    images,
+                ));
             }
         }
 

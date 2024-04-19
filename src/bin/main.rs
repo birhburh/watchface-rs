@@ -51,23 +51,37 @@ fn main() -> Result<(), Box<dyn Error>> {
     let preview = watchface.generate_preview(Some(PreviewParams {
         hours: Some(12),
         minutes: Some(6),
-        steps: Some(12882),
-        pulse: Some(123),
-        do_not_disturb: true,
-        bluetooth: false,
-        lock: false,
-        month: Some(3),
-        day: Some(23),
+        seconds: Some(34),
         time12h: true,
         am: false,
+        month: Some(3),
+        day: Some(23),
         weekday: Some(3),
+
+        steps: Some(12882),
+        steps_progress: Some(67),
+        distance: Some(14.615483),
+        pulse: Some(123),
+        heart_progress: Some(43),
+        calories: Some(3453),
+        calories_progress: Some(20),
+        pai: Some(156),
+
         weather: Some(4),
         temperature: Some(26),
         day_temperature: Some(43),
         night_temperature: Some(-10),
+        wind: Some(12),
+
         battery: Some(64),
-        distance: Some(14.6),
-        calories: Some(3453),
+        do_not_disturb: true,
+        bluetooth: false,
+        lock: false,
+        alarm_hours: Some(6),
+        alarm_minutes: Some(0),
+        alarm_on: true,
+
+        animation: Some(0),
         ..Default::default()
     }));
 

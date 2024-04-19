@@ -52,23 +52,37 @@ pub struct ImageWithCoords {
 pub struct PreviewParams {
     pub hours: Option<u32>,
     pub minutes: Option<u32>,
-    pub steps: Option<u32>,
-    pub pulse: Option<u32>,
-    pub do_not_disturb: bool,
-    pub lock: bool,
-    pub bluetooth: bool,
+    pub seconds: Option<u32>,
     pub time12h: bool,
     pub am: bool,
     pub month: Option<u32>,
     pub day: Option<u32>,
     pub weekday: Option<u32>,
+
+    pub steps: Option<u32>,
+    pub steps_progress: Option<u32>,
+    pub distance: Option<f32>,
+    pub pulse: Option<u32>,
+    pub heart_progress: Option<u32>,
+    pub calories: Option<u32>,
+    pub calories_progress: Option<u32>,
+    pub pai: Option<u32>,
+
     pub weather: Option<u32>,
     pub temperature: Option<i32>,
     pub day_temperature: Option<i32>,
     pub night_temperature: Option<i32>,
+    pub wind: Option<i32>,
+
     pub battery: Option<u32>,
-    pub distance: Option<f32>,
-    pub calories: Option<u32>,
+    pub do_not_disturb: bool,
+    pub lock: bool,
+    pub bluetooth: bool,
+    pub alarm_hours: Option<u32>,
+    pub alarm_minutes: Option<u32>,
+    pub alarm_on: bool,
+
+    pub animation: Option<u32>,
 }
 
 #[derive(Debug, PartialEq)]
