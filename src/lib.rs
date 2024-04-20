@@ -13,10 +13,11 @@ pub use common::ImageType;
 pub use common::PreviewParams;
 pub use common::Watchface;
 pub use miband::MiBandParams;
+use preview::Preview;
 
 pub fn parse_watch_face_bin<T>(bytes: &mut &[u8]) -> PResult<Watchface<T>>
 where
-    T: WatchfaceParams,
+    T: WatchfaceParams + Preview,
     Option<T>: Transform,
 {
     bin_parser(Located::new(bytes))

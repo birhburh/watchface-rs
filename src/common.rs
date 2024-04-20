@@ -1,4 +1,5 @@
 use {
+    crate::preview::Preview,
     serde::{Deserialize, Serialize},
     std::{collections::HashMap, fmt::Debug},
     watchface_rs_derive::TransformDerive,
@@ -9,7 +10,7 @@ pub type Params = HashMap<u8, Vec<Param>>;
 #[derive(Debug, PartialEq)]
 pub struct Watchface<T>
 where
-    T: WatchfaceParams,
+    T: WatchfaceParams + Preview,
     Option<T>: Transform,
 {
     pub parameters: Option<T>,
@@ -22,24 +23,18 @@ pub trait Transform {
 
 impl<T> Watchface<T>
 where
-    T: WatchfaceParams,
+    T: WatchfaceParams + Preview,
     Option<T>: Transform,
 {
     pub fn generate_preview(&self, params: Option<PreviewParams>) -> Vec<ImageWithCoords> {
         match &self.parameters {
-            Some(parameters) => parameters.get_images(params, &self.images),
+            Some(parameters) => parameters.get_images(&params, &vec![], &self.images),
             None => vec![],
         }
     }
 }
 
-pub trait WatchfaceParams {
-    fn get_images(
-        &self,
-        params: Option<PreviewParams>,
-        images: &Vec<Image>,
-    ) -> Vec<ImageWithCoords>;
-}
+pub trait WatchfaceParams {}
 
 #[derive(Debug, PartialEq)]
 pub enum ImageType {
@@ -526,7 +521,7 @@ impl Serialize for Color {
                 if first && *value <= 16 {
                     hex_num.push(format!("{:X}", value));
                 } else if i != 3 || *value != 255 {
-                        hex_num.push(format!("{:02X}", value));
+                    hex_num.push(format!("{:02X}", value));
                 }
                 first = false;
             }

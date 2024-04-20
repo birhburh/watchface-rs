@@ -34,14 +34,14 @@ watchface_name=${filename%.*}
 # mv $1 $(printf %s "$HOME/Downloads/" "$first" "${watchface_name[@]/#/-}" $'.bin')
 
 # rm -rf ${watchface_name}_extracted && wfjs readBin -m miband5 -i $1
-# cargo run $1
+cargo run $1
 
-# code --diff ${watchface_name}_extracted/watchface.json ${watchface_name}_rs_extracted/watchface.json
+code --diff ${watchface_name}_extracted/watchface.json ${watchface_name}_rs_extracted/watchface.json
 # code ${watchface_name}_rs_extracted/watchface.json
 
-# compare -metric PSNR ${watchface_name}_extracted/preview.png ${watchface_name}_rs_extracted/preview.png ${watchface_name}_rs_extracted/preview_diff.png && true
-# convert ${watchface_name}_extracted/preview.png ${watchface_name}_rs_extracted/preview_diff.png ${watchface_name}_rs_extracted/preview.png +append ${watchface_name}_rs_extracted/preview_concat.png
-# code --wait ${watchface_name}_rs_extracted/preview_concat.png
+compare -metric PSNR ${watchface_name}_extracted/preview.png ${watchface_name}_rs_extracted/preview.png ${watchface_name}_rs_extracted/preview_diff.png && true
+convert ${watchface_name}_extracted/preview.png ${watchface_name}_rs_extracted/preview_diff.png ${watchface_name}_rs_extracted/preview.png +append ${watchface_name}_rs_extracted/preview_concat.png
+code ${watchface_name}_rs_extracted/preview_concat.png
 
 # code ${watchface_name}_extracted/preview.png
 # code ${watchface_name}_rs_extracted/preview.png

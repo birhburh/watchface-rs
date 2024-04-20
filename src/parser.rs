@@ -1,5 +1,5 @@
 use {
-    crate::common::*, // TODO: not use star
+    crate::{common::*, preview::Preview}, // TODO: not use star
     std::{
         collections::{hash_map::Entry, HashMap},
         mem::size_of,
@@ -261,7 +261,7 @@ pub fn bytes_to_usize(bytes: &[u8]) -> usize {
 
 pub fn bin_parser<T>(mut i: Located<&[u8]>) -> PResult<Watchface<T>>
 where
-    T: WatchfaceParams,
+    T: WatchfaceParams + Preview,
     Option<T>: Transform,
 {
     // TODO: check signature
