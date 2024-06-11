@@ -1,64 +1,65 @@
 use {
     crate::common::*,
+    crate::preview::{ParamType, Preview},
+    derive::{PreviewDerive, TransformDerive},
     serde::{ser::SerializeSeq, Deserialize, Serialize},
     std::fmt::Debug,
-    watchface_rs_derive::TransformDerive,
 };
 
 // TODO: check that all fields from UIHH_MIBAND.json copied
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive, PreviewDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct MiBandParams {
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub background: Option<Background>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time: Option<Time>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub activity: Option<Activity>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date: Option<Date>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weather: Option<Weather>,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub steps_progress: Option<StepsProgress>,
-    #[wfrs_id(8)]
+    #[wfrs(id = 8)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<Status>,
-    #[wfrs_id(9)]
+    #[wfrs(id = 9)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub battery: Option<Battery>,
-    #[wfrs_id(10)]
+    #[wfrs(id = 10)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub analog_dial_face: Option<AnalogDialFace>,
-    #[wfrs_id(11)]
+    #[wfrs(id = 11)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub other: Option<Other>,
-    #[wfrs_id(12)]
+    #[wfrs(id = 12)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub heart_progress: Option<HeartProgress>,
-    #[wfrs_id(14)]
+    #[wfrs(id = 14)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub week_days_icons: Option<WeekDaysIcons>,
-    #[wfrs_id(15)]
+    #[wfrs(id = 15)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub calories_progress: Option<CaloriesProgress>,
-    #[wfrs_id(18)]
+    #[wfrs(id = 18)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alarm: Option<Alarm>,
-    #[wfrs_id(20)]
+    #[wfrs(id = 20)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status2: Option<Status>,
-    #[wfrs_id(21)]
+    #[wfrs(id = 21)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unknown: Option<UnknownStruct>,
-    #[wfrs_id(22)]
+    #[wfrs(id = 22)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lunar_date: Option<LunarDate>,
 }
@@ -68,107 +69,107 @@ impl WatchfaceParams for MiBandParams {}
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Background {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<ImageReference>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<Color>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "PreviewEN")]
     pub preview_en: Option<ImageReference>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "PreviewCN")]
     pub preview_cn: Option<ImageReference>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "PreviewCN2")]
     pub preview_cn2: Option<ImageReference>,
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive, PreviewDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Time {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1, params = ["U32", "hours"])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hours: Option<TimeNumbers>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2, params = ["U32", "minutes"])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minutes: Option<TimeNumbers>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3, params = ["U32", "seconds"])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seconds: Option<TimeNumbers>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub delimiter_image: Option<ImageReference>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_delimiter_image: Option<ImageReference>,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sunset_time_number: Option<NumberInRect>,
-    #[wfrs_id(8)]
+    #[wfrs(id = 8)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sunset_time_delimiter_image_index: Option<ImgId>,
-    #[wfrs_id(9)]
+    #[wfrs(id = 9)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sunrise_time_number: Option<NumberInRect>,
-    #[wfrs_id(10)]
+    #[wfrs(id = 10)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sunrise_time_delimiter_image_index: Option<ImgId>,
-    #[wfrs_id(11)]
+    #[wfrs(id = 11)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub drawing_order: Option<bool>,
-    #[wfrs_id(12)]
+    #[wfrs(id = 12)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sunset_time_no_data_image: Option<ImageReference>,
-    #[wfrs_id(13)]
+    #[wfrs(id = 13)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sunrise_time_no_data_image: Option<ImageReference>,
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive, PreviewDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct TimeNumbers {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1, params = ["U32", "param / 10"])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tens: Option<ImageRange>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2, params = ["U32", "param % 10"])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ones: Option<ImageRange>,
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive, PreviewDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Activity {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1, params = ["U32", "steps"])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub steps: Option<Steps>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3, params = ["U32", "calories"])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub calories: Option<Calories>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4, params = ["U32", "pulse"])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pulse: Option<Pulse>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5, params = ["F32", "distance"])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<Distance>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6, params = ["U32", "pai"])]
     #[serde(skip_serializing_if = "Option::is_none", rename = "PAI")]
     pub pai: Option<PAI>,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     pub unknown_v7: i32,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Steps {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prefix_image_index: Option<ImgId>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suffix_image_index: Option<ImgId>,
 }
@@ -176,10 +177,10 @@ pub struct Steps {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Calories {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suffix_image_index: Option<ImgId>,
 }
@@ -187,16 +188,16 @@ pub struct Calories {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Pulse {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prefix_image_index: Option<ImgId>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub no_data_image_index: Option<ImgId>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suffix_image_index: Option<ImgId>,
 }
@@ -204,16 +205,16 @@ pub struct Pulse {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Distance {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub km_suffix_image_index: Option<ImgId>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub decimal_point_image_index: Option<ImgId>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub miles_suffix_image_index: Option<ImgId>,
 }
@@ -221,7 +222,7 @@ pub struct Distance {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct PAI {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
 }
@@ -229,19 +230,19 @@ pub struct PAI {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Date {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub month_and_day_and_year: Option<MonthAndDayAndYear>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub day_am_pm: Option<DayAmPm>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "ENWeekDays")]
     pub en_week_days: Option<ImageRange>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "CNWeekDays")]
     pub cn_week_days: Option<ImageRange>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "CN2WeekDays")]
     pub cn2_week_days: Option<ImageRange>,
 }
@@ -249,19 +250,19 @@ pub struct Date {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct MonthAndDayAndYear {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub separate: Option<Separate>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub one_line: Option<OneLine>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub one_line_with_year: Option<OneLine>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub two_digits_month: Option<bool>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub two_digits_day: Option<bool>,
 }
@@ -269,16 +270,16 @@ pub struct MonthAndDayAndYear {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Separate {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub month: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "MonthsEN")]
     pub months_en: Option<ImageRange>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "MonthsCN")]
     pub months_cn: Option<ImageRange>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub day: Option<NumberInRect>,
 }
@@ -286,10 +287,10 @@ pub struct Separate {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct OneLine {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub delimiter_image_index: Option<ImgId>,
 }
@@ -297,26 +298,26 @@ pub struct OneLine {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct DayAmPm {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     pub x: i32,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     pub y: i32,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(rename = "ImageIndexAMCN", skip_serializing_if = "Option::is_none")]
     pub image_index_amcn: Option<ImgId>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(rename = "ImageIndexPMCN", skip_serializing_if = "Option::is_none")]
     pub image_index_pmcn: Option<ImgId>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(rename = "ImageIndexAMEN", skip_serializing_if = "Option::is_none")]
     pub image_index_amen: Option<ImgId>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     #[serde(rename = "ImageIndexPMEN", skip_serializing_if = "Option::is_none")]
     pub image_index_pmen: Option<ImgId>,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     #[serde(rename = "X_EN", skip_serializing_if = "Option::is_none")]
     pub x_en: Option<u32>,
-    #[wfrs_id(8)]
+    #[wfrs(id = 8)]
     #[serde(rename = "Y_EN", skip_serializing_if = "Option::is_none")]
     pub y_en: Option<u32>,
 }
@@ -324,13 +325,13 @@ pub struct DayAmPm {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Status {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub do_not_disturb: Option<StatusImage>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lock: Option<StatusImage>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bluetooth: Option<StatusImage>,
 }
@@ -338,22 +339,22 @@ pub struct Status {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Weather {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon: Option<Icon>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<Temperature>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub air_quality: Option<AirQuality>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub humidity: Option<Humidity>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wind: Option<Wind>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "UVIndex")]
     pub uv_index: Option<UVIndex>,
 }
@@ -361,13 +362,13 @@ pub struct Weather {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Icon {
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_icon: Option<ImageRange>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub position1: Option<Coordinates>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub position2: Option<Coordinates>,
 }
@@ -375,10 +376,10 @@ pub struct Icon {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Temperature {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current: Option<TemperatureType>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub today: Option<Today>,
 }
@@ -386,10 +387,10 @@ pub struct Temperature {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Today {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub separate: Option<TemperatureSeparate>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub one_line: Option<TodayOneLine>,
 }
@@ -397,10 +398,10 @@ pub struct Today {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct TemperatureSeparate {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub day: Option<TemperatureType>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub night: Option<TemperatureType>,
 }
@@ -408,19 +409,19 @@ pub struct TemperatureSeparate {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct TodayOneLine {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minus_image_index: Option<ImgId>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub delimiter_image_index: Option<ImgId>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub append_suffix_to_all: Option<bool>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suffix_image_index: Option<ImgId>,
 }
@@ -428,10 +429,10 @@ pub struct TodayOneLine {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct AirQuality {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon: Option<ImageRange>,
 }
@@ -439,13 +440,13 @@ pub struct AirQuality {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Humidity {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suffix_image_index: Option<ImgId>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image_pos_suffix: Option<ImageReference>,
 }
@@ -453,28 +454,28 @@ pub struct Humidity {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Wind {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "SuffixImageIndexEN")]
     pub suffix_image_index_en: Option<ImgId>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "SuffixImageIndexCN")]
     pub suffix_image_index_cn: Option<ImgId>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(
         skip_serializing_if = "Option::is_none",
         rename = "SuffixImageIndexCN2"
     )]
     pub suffix_image_index_cn2: Option<ImgId>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "ImagePosSuffixEN")]
     pub image_pos_suffix_en: Option<ImageReference>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "ImagePosSuffixCN")]
     pub image_pos_suffix_cn: Option<ImageReference>,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "ImagePosSuffixCN2")]
     pub image_pos_suffix_cn2: Option<ImageReference>,
 }
@@ -482,13 +483,13 @@ pub struct Wind {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct UVIndex {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "UV")]
     pub uv: Option<UV>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "UVCN")]
     pub uvcn: Option<ImageRange>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "UVCN2")]
     pub uvcn2: Option<ImageRange>,
 }
@@ -496,10 +497,10 @@ pub struct UVIndex {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct UV {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "UVCN")]
     pub suffix_image_index: Option<ImgId>,
 }
@@ -507,16 +508,16 @@ pub struct UV {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct StepsProgress {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub goal_image: Option<ImageReference>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub line_scale: Option<ImageRange>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub linear: Option<Linear>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub circle_scale: Option<CircleScale>,
 }
@@ -524,13 +525,13 @@ pub struct StepsProgress {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Battery {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub battery_text: Option<BatteryText>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub battery_icon: Option<ImageRange>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub linear: Option<Linear>,
 }
@@ -538,13 +539,13 @@ pub struct Battery {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct BatteryText {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prefix_image_index: Option<ImgId>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suffix_image_index: Option<ImgId>,
 }
@@ -552,23 +553,23 @@ pub struct BatteryText {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Linear {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start_image_index: Option<ImgId>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     pub segments: Vec<Coordinates>,
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive, PreviewDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct AnalogDialFace {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1, params = ["U32", "hours", "F32", "12."])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hours: Option<VectorShape>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2, params = ["U32", "minutes", "F32", "60."])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minutes: Option<VectorShape>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3, params = ["U32", "seconds", "F32", "60."])]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seconds: Option<VectorShape>,
 }
@@ -579,23 +580,23 @@ pub struct Animations(pub Vec<Animation>);
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Other {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     pub animation: Animations,
 }
 
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Animation {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub animation_images: Option<ImageRange>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub speed: Option<u32>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repeat_count: Option<u32>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unknown_v4: Option<u32>,
 }
@@ -631,13 +632,13 @@ impl Serialize for Animations {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct HeartProgress {
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub line_scale: Option<ImageRange>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub linear: Option<Linear>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub circle_scale: Option<CircleScale>,
 }
@@ -645,28 +646,28 @@ pub struct HeartProgress {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct CircleScale {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub center_x: Option<u32>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub center_y: Option<u32>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub radius_x: Option<u32>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub radius_y: Option<u32>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start_angle: Option<u32>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end_angle: Option<u32>,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<u32>,
-    #[wfrs_id(8)]
+    #[wfrs(id = 8)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<Color>,
 }
@@ -674,39 +675,39 @@ pub struct CircleScale {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct WeekDaysIcons {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub monday: Option<ImageReference>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tuesday: Option<ImageReference>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wednesday: Option<ImageReference>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thursday: Option<ImageReference>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub friday: Option<ImageReference>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub saturday: Option<ImageReference>,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sunday: Option<ImageReference>,
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive, PreviewDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct CaloriesProgress {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub goal_image: Option<ImageReference>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub line_scale: Option<ImageRange>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub linear: Option<Linear>,
 }
@@ -714,78 +715,78 @@ pub struct CaloriesProgress {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Alarm {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub delimiter_image_index: Option<ImgId>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub on_image: Option<ImageReference>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub off_image: Option<ImageReference>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub no_data_image: Option<ImageReference>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     unknown_v6: i32,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     unknown_v7: i32,
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive, PreviewDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct UnknownStruct {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unknown_1: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unknown_2: Option<NumberInRect>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unknown_3: Option<ImgId>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unknown_4: Option<ImgId>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unknown_5: Option<ImgId>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unknown_6: Option<ImgId>,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unknown_7: Option<ImgId>,
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
+#[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive, PreviewDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct LunarDate {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub month: Option<ImageRange>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub day: Option<NumberInRect>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "DayOf0X")]
     pub day_of_0x: Option<ImgId>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "DayOf2X")]
     pub day_of_2x: Option<ImgId>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "DayOf10")]
     pub day_of_10: Option<ImgId>,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "DayOf20")]
     pub day_of_20: Option<ImgId>,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "DayOf30")]
     pub day_of_30: Option<ImgId>,
-    #[wfrs_id(10)]
+    #[wfrs(id = 10)]
     #[serde(skip_serializing_if = "Option::is_none", rename = "DayCN2")]
     pub day_cn2: Option<NumberInRect>,
 }

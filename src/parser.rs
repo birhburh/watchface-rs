@@ -261,8 +261,8 @@ pub fn bytes_to_usize(bytes: &[u8]) -> usize {
 
 pub fn bin_parser<T>(mut i: Located<&[u8]>) -> PResult<Watchface<T>>
 where
-    T: WatchfaceParams + Preview,
-    Option<T>: Transform,
+    T: WatchfaceParams,
+    Option<T>: Transform + Preview,
 {
     // TODO: check signature
     let _signature = token::take(4usize).parse_next(&mut i)?;

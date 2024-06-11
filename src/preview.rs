@@ -7,6 +7,7 @@ use {
     },
 };
 
+#[derive(Debug)]
 pub enum ParamType {
     Bool(bool),
     U32(Option<u32>),
@@ -21,8 +22,6 @@ pub trait Preview {
         params: &Vec<ParamType>,
         images: &Vec<Image>,
     ) -> Vec<ImageWithCoords>;
-
-    // fn get_params(params: &Option<PreviewParams>) -> &[ParamType];
 }
 
 fn compute_position_with_aligment(
@@ -268,94 +267,109 @@ fn numbers_with_delimiters_get_images(
     res
 }
 
-fn vector_shape_get_images(
-    vector_shape: &Option<VectorShape>,
-    param: Option<u32>,
-    total_value: f32,
-) -> Vec<ImageWithCoords> {
-    let mut res = vec![];
-    if let Some(value) = param {
-        if let Some(vector_shape) = &vector_shape {
-            if let Some(color) = &vector_shape.color {
-                if let Some(center) = &vector_shape.center {
-                    if let Some(first) = &vector_shape.shape.get(0) {
-                        let angle = (2. * PI * value as f32 / total_value - PI / 2.) * 180. / PI;
+impl Preview for Option<VectorShape> {
+    fn get_images(
+        &self,
+        _all_params: &Option<PreviewParams>,
+        params: &Vec<ParamType>,
+        _images: &Vec<Image>,
+    ) -> Vec<ImageWithCoords> {
+        let mut res = vec![];
+        if let Some(ParamType::U32(Some(value))) = params.get(0) {
+            let value = *value;
+            if let Some(ParamType::F32(Some(ref total_value))) = params.get(1) {
+                let total_value = *total_value;
+                if let Some(vector_shape) = self {
+                    if let Some(color) = &vector_shape.color {
+                        if let Some(center) = &vector_shape.center {
+                            if let Some(first) = &vector_shape.shape.get(0) {
+                                let angle =
+                                    (2. * PI * value as f32 / total_value - PI / 2.) * 180. / PI;
 
-                        // TODO: replace 126, 294 with sizes of watchface screen
-                        let mut pixmap = Pixmap::new(126, 294).unwrap();
+                                // TODO: replace 126, 294 with sizes of watchface screen
+                                let mut pixmap = Pixmap::new(126, 294).unwrap();
 
-                        let mut paint = Paint::default();
-                        paint.set_color_rgba8(color.0, color.1, color.2, color.3);
-                        paint.anti_alias = true;
+                                let mut paint = Paint::default();
+                                paint.set_color_rgba8(color.0, color.1, color.2, color.3);
+                                paint.anti_alias = true;
 
-                        let mut pb = PathBuilder::new();
-                        pb.move_to(first.x as f32, first.y as f32);
+                                let mut pb = PathBuilder::new();
+                                pb.move_to(first.x as f32, first.y as f32);
 
-                        for point in &vector_shape.shape[1..] {
-                            pb.line_to(point.x as f32, point.y as f32);
+                                for point in &vector_shape.shape[1..] {
+                                    pb.line_to(point.x as f32, point.y as f32);
+                                }
+                                pb.close();
+                                let path = pb.finish().unwrap();
+
+                                let only_border =
+                                    if let Some(only_border) = vector_shape.only_border {
+                                        only_border
+                                    } else {
+                                        false
+                                    };
+
+                                if only_border {
+                                    let stroke = Stroke::default();
+                                    pixmap.stroke_path(
+                                        &path,
+                                        &paint,
+                                        &stroke,
+                                        Transform2::from_translate(
+                                            center.x as f32,
+                                            center.y as f32,
+                                        )
+                                        .pre_rotate(angle),
+                                        None,
+                                    );
+                                } else {
+                                    pixmap.fill_path(
+                                        &path,
+                                        &paint,
+                                        FillRule::Winding,
+                                        Transform2::from_translate(
+                                            center.x as f32,
+                                            center.y as f32,
+                                        )
+                                        .pre_rotate(angle),
+                                        None,
+                                    );
+                                }
+
+                                let width = pixmap.width() as u16;
+                                let height = pixmap.height() as u16;
+                                let pixels = pixmap.take();
+
+                                res.push(ImageWithCoords {
+                                    x: 0,
+                                    y: 0,
+                                    image_type: ImageType::Image(Image {
+                                        pixels,
+                                        width,
+                                        height,
+                                        bits_per_pixel: (BYTES_PER_PIXEL * 8) as u16,
+                                        pixel_format: 0,
+                                    }),
+                                });
+                            }
                         }
-                        pb.close();
-                        let path = pb.finish().unwrap();
+                    }
 
-                        let only_border = if let Some(only_border) = vector_shape.only_border {
-                            only_border
-                        } else {
-                            false
-                        };
-
-                        if only_border {
-                            let stroke = Stroke::default();
-                            pixmap.stroke_path(
-                                &path,
-                                &paint,
-                                &stroke,
-                                Transform2::from_translate(center.x as f32, center.y as f32)
-                                    .pre_rotate(angle),
-                                None,
-                            );
-                        } else {
-                            pixmap.fill_path(
-                                &path,
-                                &paint,
-                                FillRule::Winding,
-                                Transform2::from_translate(center.x as f32, center.y as f32)
-                                    .pre_rotate(angle),
-                                None,
-                            );
+                    if let Some(center_image) = &vector_shape.center_image {
+                        if let Some(image_index) = &center_image.image_index {
+                            res.push(ImageWithCoords {
+                                x: center_image.x,
+                                y: center_image.y,
+                                image_type: ImageType::Id(ImgId(image_index.0)),
+                            });
                         }
-
-                        let width = pixmap.width() as u16;
-                        let height = pixmap.height() as u16;
-                        let pixels = pixmap.take();
-
-                        res.push(ImageWithCoords {
-                            x: 0,
-                            y: 0,
-                            image_type: ImageType::Image(Image {
-                                pixels,
-                                width,
-                                height,
-                                bits_per_pixel: (BYTES_PER_PIXEL * 8) as u16,
-                                pixel_format: 0,
-                            }),
-                        });
                     }
                 }
             }
-
-            if let Some(center_image) = &vector_shape.center_image {
-                if let Some(image_index) = &center_image.image_index {
-                    res.push(ImageWithCoords {
-                        x: center_image.x,
-                        y: center_image.y,
-                        image_type: ImageType::Id(ImgId(image_index.0)),
-                    });
-                }
-            }
         }
-    }
 
-    res
+        res
+    }
 }
 
 impl Preview for Option<ImageReference> {
@@ -409,90 +423,14 @@ impl Preview for Option<ImageRange> {
 
         if let Some(image_range) = self {
             if let Some(image_index) = &image_range.image_index {
-                if let Some(param) = params.get(0) {
-                    if let ParamType::U32(param) = param {
-                        if let Some(value) = param {
-                            res.push(ImageWithCoords {
-                                x: image_range.x,
-                                y: image_range.y,
-                                image_type: ImageType::Id(ImgId(image_index.0 + value)),
-                            });
-                        }
-                    }
+                if let Some(ParamType::U32(Some(param))) = params.get(0) {
+                    res.push(ImageWithCoords {
+                        x: image_range.x,
+                        y: image_range.y,
+                        image_type: ImageType::Id(ImgId(image_index.0 + param)),
+                    });
                 }
             }
-        }
-
-        res
-    }
-}
-
-impl Preview for Option<TimeNumbers> {
-    fn get_images(
-        &self,
-        all_params: &Option<PreviewParams>,
-        params: &Vec<ParamType>,
-        images: &Vec<Image>,
-    ) -> Vec<ImageWithCoords> {
-        let mut res = vec![];
-
-        if let Some(time_numbers) = self {
-            if let Some(param) = params.get(0) {
-                if let ParamType::U32(param) = param {
-                    if let Some(two_nums) = param {
-                        res.append(&mut time_numbers.tens.get_images(
-                            all_params,
-                            &vec![ParamType::U32(Some(two_nums / 10))],
-                            images,
-                        ));
-                        res.append(&mut time_numbers.ones.get_images(
-                            all_params,
-                            &vec![ParamType::U32(Some(two_nums % 10))],
-                            images,
-                        ));
-                    }
-                }
-            }
-        }
-
-        res
-    }
-}
-
-impl Preview for Option<Time> {
-    fn get_images(
-        &self,
-        all_params: &Option<PreviewParams>,
-        _params: &Vec<ParamType>,
-        images: &Vec<Image>,
-    ) -> Vec<ImageWithCoords> {
-        let mut res = vec![];
-
-        if let Some(time) = &self {
-            if let Some(all_params_val) = &all_params {
-                res.append(&mut time.hours.get_images(
-                    all_params,
-                    &vec![ParamType::U32(all_params_val.hours)],
-                    images,
-                ));
-                res.append(&mut time.minutes.get_images(
-                    all_params,
-                    &vec![ParamType::U32(all_params_val.minutes)],
-                    images,
-                ));
-                res.append(&mut time.seconds.get_images(
-                    all_params,
-                    &vec![ParamType::U32(all_params_val.seconds)],
-                    images,
-                ));
-            }
-
-            res.append(&mut time.delimiter_image.get_images(all_params, &vec![], images));
-            res.append(
-                &mut time
-                    .time_delimiter_image
-                    .get_images(all_params, &vec![], images),
-            );
         }
 
         res
@@ -509,21 +447,17 @@ impl Preview for Option<Steps> {
         let mut res = vec![];
 
         if let Some(steps) = &self {
-            if let Some(param) = params.get(0) {
-                if let ParamType::U32(param) = param {
-                    if let Some(value) = param {
-                        res.append(&mut number_get_images(
-                            &steps.number,
-                            *value as f32,
-                            images,
-                            &steps.prefix_image_index,
-                            &None,
-                            &None,
-                            &steps.suffix_image_index,
-                            None,
-                        ));
-                    }
-                }
+            if let Some(ParamType::U32(Some(param))) = params.get(0) {
+                res.append(&mut number_get_images(
+                    &steps.number,
+                    *param as f32,
+                    images,
+                    &steps.prefix_image_index,
+                    &None,
+                    &None,
+                    &steps.suffix_image_index,
+                    None,
+                ));
             }
         }
 
@@ -541,21 +475,17 @@ impl Preview for Option<Pulse> {
         let mut res = vec![];
 
         if let Some(pulse) = &self {
-            if let Some(param) = params.get(0) {
-                if let ParamType::U32(param) = param {
-                    if let Some(value) = param {
-                        res.append(&mut number_get_images(
-                            &pulse.number,
-                            *value as f32,
-                            images,
-                            &pulse.prefix_image_index,
-                            &None,
-                            &None,
-                            &pulse.suffix_image_index,
-                            None,
-                        ));
-                    }
-                }
+            if let Some(ParamType::U32(Some(param))) = params.get(0) {
+                res.append(&mut number_get_images(
+                    &pulse.number,
+                    *param as f32,
+                    images,
+                    &pulse.prefix_image_index,
+                    &None,
+                    &None,
+                    &pulse.suffix_image_index,
+                    None,
+                ));
             }
         }
 
@@ -573,21 +503,17 @@ impl Preview for Option<Calories> {
         let mut res = vec![];
 
         if let Some(calories) = &self {
-            if let Some(param) = params.get(0) {
-                if let ParamType::U32(param) = param {
-                    if let Some(value) = param {
-                        res.append(&mut number_get_images(
-                            &calories.number,
-                            *value as f32,
-                            images,
-                            &None,
-                            &None,
-                            &None,
-                            &calories.suffix_image_index,
-                            None,
-                        ));
-                    }
-                }
+            if let Some(ParamType::U32(Some(param))) = params.get(0) {
+                res.append(&mut number_get_images(
+                    &calories.number,
+                    *param as f32,
+                    images,
+                    &None,
+                    &None,
+                    &None,
+                    &calories.suffix_image_index,
+                    None,
+                ));
             }
         }
 
@@ -605,21 +531,17 @@ impl Preview for Option<PAI> {
         let mut res = vec![];
 
         if let Some(pai) = &self {
-            if let Some(param) = params.get(0) {
-                if let ParamType::U32(param) = param {
-                    if let Some(value) = param {
-                        res.append(&mut number_get_images(
-                            &pai.number,
-                            *value as f32,
-                            images,
-                            &None,
-                            &None,
-                            &None,
-                            &None,
-                            None,
-                        ));
-                    }
-                }
+            if let Some(ParamType::U32(Some(param))) = params.get(0) {
+                res.append(&mut number_get_images(
+                    &pai.number,
+                    *param as f32,
+                    images,
+                    &None,
+                    &None,
+                    &None,
+                    &None,
+                    None,
+                ));
             }
         }
 
@@ -637,63 +559,16 @@ impl Preview for Option<Distance> {
         let mut res = vec![];
 
         if let Some(distance) = &self {
-            if let Some(param) = params.get(0) {
-                if let ParamType::F32(param) = param {
-                    if let Some(value) = param {
-                        res.append(&mut number_get_images(
-                            &distance.number,
-                            *value,
-                            images,
-                            &None,
-                            &distance.decimal_point_image_index,
-                            &None,
-                            &distance.km_suffix_image_index,
-                            None,
-                        ));
-                    }
-                }
-            }
-        }
-
-        res
-    }
-}
-
-impl Preview for Option<Activity> {
-    fn get_images(
-        &self,
-        all_params: &Option<PreviewParams>,
-        _params: &Vec<ParamType>,
-        images: &Vec<Image>,
-    ) -> Vec<ImageWithCoords> {
-        let mut res = vec![];
-
-        if let Some(activity) = &self {
-            if let Some(all_params_val) = &all_params {
-                res.append(&mut activity.steps.get_images(
-                    all_params,
-                    &vec![ParamType::U32(all_params_val.steps)],
+            if let Some(ParamType::F32(Some(param))) = params.get(0) {
+                res.append(&mut number_get_images(
+                    &distance.number,
+                    *param,
                     images,
-                ));
-                res.append(&mut activity.calories.get_images(
-                    all_params,
-                    &vec![ParamType::U32(all_params_val.calories)],
-                    images,
-                ));
-                res.append(&mut activity.pulse.get_images(
-                    all_params,
-                    &vec![ParamType::U32(all_params_val.pulse)],
-                    images,
-                ));
-                res.append(&mut activity.distance.get_images(
-                    all_params,
-                    &vec![ParamType::F32(all_params_val.distance)],
-                    images,
-                ));
-                res.append(&mut activity.pai.get_images(
-                    all_params,
-                    &vec![ParamType::U32(all_params_val.pai)],
-                    images,
+                    &None,
+                    &distance.decimal_point_image_index,
+                    &None,
+                    &distance.km_suffix_image_index,
+                    None,
                 ));
             }
         }
@@ -713,22 +588,15 @@ impl Preview for Option<Linear> {
 
         if let Some(linear) = &self {
             if let Some(start_image_index) = &linear.start_image_index {
-                if let Some(param) = params.get(0) {
-                    if let ParamType::U32(param) = param {
-                        if let Some(value) = param {
-                            let progress = (*value as f32 / 100.
-                                * (linear.segments.len() - 1) as f32)
-                                .round() as usize;
-                            for i in 0..=progress {
-                                res.push(ImageWithCoords {
-                                    x: linear.segments[i].x,
-                                    y: linear.segments[i].y,
-                                    image_type: ImageType::Id(ImgId(
-                                        start_image_index.0 + i as u32,
-                                    )),
-                                });
-                            }
-                        }
+                if let Some(ParamType::U32(Some(param))) = params.get(0) {
+                    let progress = (*param as f32 / 100. * (linear.segments.len() - 1) as f32)
+                        .round() as usize;
+                    for i in 0..=progress {
+                        res.push(ImageWithCoords {
+                            x: linear.segments[i].x,
+                            y: linear.segments[i].y,
+                            image_type: ImageType::Id(ImgId(start_image_index.0 + i as u32)),
+                        });
                     }
                 }
             }
@@ -990,7 +858,6 @@ impl Preview for Option<Weather> {
     ) -> Vec<ImageWithCoords> {
         let mut res = vec![];
 
-
         if let Some(weather) = &self {
             if let Some(all_params_val) = &all_params {
                 if let Some(icon) = &weather.icon {
@@ -1214,39 +1081,6 @@ impl Preview for Option<Battery> {
     }
 }
 
-impl Preview for Option<AnalogDialFace> {
-    fn get_images(
-        &self,
-        all_params: &Option<PreviewParams>,
-        _params: &Vec<ParamType>,
-        _images: &Vec<Image>,
-    ) -> Vec<ImageWithCoords> {
-        let mut res = vec![];
-
-        if let Some(analog_dial_face) = &self {
-            if let Some(all_params_val) = &all_params {
-                res.append(&mut vector_shape_get_images(
-                    &analog_dial_face.hours,
-                    all_params_val.hours,
-                    12.,
-                ));
-                res.append(&mut vector_shape_get_images(
-                    &analog_dial_face.minutes,
-                    all_params_val.minutes,
-                    60.,
-                ));
-                res.append(&mut vector_shape_get_images(
-                    &analog_dial_face.seconds,
-                    all_params_val.seconds,
-                    60.,
-                ));
-            }
-        }
-
-        res
-    }
-}
-
 impl Preview for Option<Other> {
     fn get_images(
         &self,
@@ -1269,34 +1103,6 @@ impl Preview for Option<Other> {
                 }
             }
         }
-
-        res
-    }
-}
-
-impl Preview for MiBandParams {
-    fn get_images(
-        &self,
-        all_params: &Option<PreviewParams>,
-        _params: &Vec<ParamType>,
-        images: &Vec<Image>,
-    ) -> Vec<ImageWithCoords> {
-        let mut res = vec![];
-
-        res.append(&mut self.background.get_images(all_params, &vec![], images));
-        res.append(&mut self.time.get_images(all_params, &vec![], images));
-        res.append(&mut self.activity.get_images(all_params, &vec![], images));
-        res.append(&mut self.heart_progress.get_images(all_params, &vec![], images));
-        res.append(&mut self.week_days_icons.get_images(all_params, &vec![], images));
-        res.append(&mut self.alarm.get_images(all_params, &vec![], images));
-        res.append(&mut self.status.get_images(all_params, &vec![], images));
-        res.append(&mut self.date.get_images(all_params, &vec![], images));
-        res.append(&mut self.weather.get_images(all_params, &vec![], images));
-        res.append(&mut self.steps_progress.get_images(all_params, &vec![], images));
-        res.append(&mut self.battery.get_images(all_params, &vec![], images));
-        res.append(&mut self.analog_dial_face.get_images(all_params, &vec![], images));
-        res.append(&mut self.other.get_images(all_params, &vec![], images));
-        res.append(&mut self.status2.get_images(all_params, &vec![], images));
 
         res
     }

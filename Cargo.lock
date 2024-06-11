@@ -60,6 +60,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "fdeflate"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -254,22 +263,13 @@ checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 name = "watchface-rs"
 version = "0.1.0"
 dependencies = [
+ "derive",
  "image",
  "png",
  "serde",
  "serde_json",
  "tiny-skia",
- "watchface_rs_derive",
  "winnow",
-]
-
-[[package]]
-name = "watchface_rs_derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

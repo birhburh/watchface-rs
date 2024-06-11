@@ -1,8 +1,8 @@
 use {
     crate::preview::Preview,
+    derive::TransformDerive,
     serde::{Deserialize, Serialize},
     std::{collections::HashMap, fmt::Debug},
-    watchface_rs_derive::TransformDerive,
 };
 
 pub type Params = HashMap<u8, Vec<Param>>;
@@ -10,8 +10,8 @@ pub type Params = HashMap<u8, Vec<Param>>;
 #[derive(Debug, PartialEq)]
 pub struct Watchface<T>
 where
-    T: WatchfaceParams + Preview,
-    Option<T>: Transform,
+    T: WatchfaceParams,
+    Option<T>: Transform + Preview,
 {
     pub parameters: Option<T>,
     pub images: Vec<Image>,
@@ -23,14 +23,11 @@ pub trait Transform {
 
 impl<T> Watchface<T>
 where
-    T: WatchfaceParams + Preview,
-    Option<T>: Transform,
+    T: WatchfaceParams,
+    Option<T>: Transform + Preview,
 {
     pub fn generate_preview(&self, params: Option<PreviewParams>) -> Vec<ImageWithCoords> {
-        match &self.parameters {
-            Some(parameters) => parameters.get_images(&params, &vec![], &self.images),
-            None => vec![],
-        }
+        self.parameters.get_images(&params, &vec![], &self.images)
     }
 }
 
@@ -165,11 +162,11 @@ impl Transform for Option<ImgId> {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct ImageReference {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     pub x: i32,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     pub y: i32,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image_index: Option<ImgId>,
 }
@@ -177,14 +174,14 @@ pub struct ImageReference {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct ImageRange {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     pub x: i32,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     pub y: i32,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image_index: Option<ImgId>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub images_count: Option<u32>,
 }
@@ -192,17 +189,17 @@ pub struct ImageRange {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct StatusPosition {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     pub x: i32,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     pub y: i32,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alignment: Option<Alignment>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     #[serde(skip_serializing_if = "Option::is_none")]
     unknown4: Option<u32>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     unknown5: Option<u32>,
 }
@@ -210,13 +207,13 @@ pub struct StatusPosition {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct StatusImage {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub coordinates: Option<StatusPosition>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub on_image_index: Option<ImgId>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub off_image_index: Option<ImgId>,
 }
@@ -224,9 +221,9 @@ pub struct StatusImage {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct Coordinates {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     pub x: i32,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     pub y: i32,
 }
 
@@ -396,24 +393,24 @@ impl Transform for Alignment {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct NumberInRect {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     pub top_left_x: i32,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     pub top_left_y: i32,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     pub bottom_right_x: i32,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     pub bottom_right_y: i32,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     pub alignment: Alignment,
-    #[wfrs_id(6)]
+    #[wfrs(id = 6)]
     pub spacing_x: i32,
-    #[wfrs_id(7)]
+    #[wfrs(id = 7)]
     pub spacing_y: i32,
-    #[wfrs_id(8)]
+    #[wfrs(id = 8)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image_index: Option<ImgId>,
-    #[wfrs_id(9)]
+    #[wfrs(id = 9)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub images_count: Option<u32>,
 }
@@ -421,13 +418,13 @@ pub struct NumberInRect {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct TemperatureType {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<NumberInRect>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minus_image_index: Option<ImgId>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suffix_image_index: Option<ImgId>,
 }
@@ -435,18 +432,18 @@ pub struct TemperatureType {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, TransformDerive)]
 #[serde(rename_all = "PascalCase")]
 pub struct VectorShape {
-    #[wfrs_id(1)]
+    #[wfrs(id = 1)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub only_border: Option<bool>,
-    #[wfrs_id(2)]
+    #[wfrs(id = 2)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<Color>,
-    #[wfrs_id(3)]
+    #[wfrs(id = 3)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub center: Option<Coordinates>,
-    #[wfrs_id(4)]
+    #[wfrs(id = 4)]
     pub shape: Vec<Coordinates>,
-    #[wfrs_id(5)]
+    #[wfrs(id = 5)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub center_image: Option<ImageReference>,
 }
